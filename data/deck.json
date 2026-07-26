@@ -1,0 +1,23 @@
+[
+  {
+    "id": "home",
+    "label": "Home",
+    "action": "key",
+    "value": "3",
+    "color": "sapphire"
+  },
+  {
+    "id": "back",
+    "label": "Back",
+    "action": "key",
+    "value": "4",
+    "color": "sapphire"
+  },
+  {
+    "id": "recent",
+    "label": "Recent Apps",
+    "action": "key",
+    "value": "187",
+    "color": "sapphire"
+  }
+]
