@@ -55,9 +55,9 @@ function runFarmingLoopStep() {
     return;
   }
 
-  // --- PART 1: Play Game Macro ---
+  // --- PART 1: Play Game Macro via 3-Dots Operation Recorder ---
   farmingLoopStep = 'part1_play';
-  addFarmingLog(`🎮 [Part 1] Starting Play Macro: '${selectedPlayMacro}' via 3-dots Operation Recorder...`, 'info');
+  addFarmingLog(`🎮 [Part 1 Started] Running Play Macro '${selectedPlayMacro}' via 3-Dots Operation Recorder...`, 'info');
 
   fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedPlayMacro, 'utf8'));
   
@@ -128,7 +128,7 @@ function runPart2Detection() {
       });
     } else {
       // No CAPTCHA detected, Part 2 success verified
-      addFarmingLog(`✅ [Part 2 Verified] No CAPTCHA detected. Screen state verified clean!`, 'success');
+      addFarmingLog(`✅ [Part 2 Verified] Screen state verified clean!`, 'success');
       addFarmingLog(`🏁 [Part 2 Ended] Proceeding to Part 3 (Reset Macro)...`, 'info');
       runPart3Reset();
     }
@@ -140,7 +140,7 @@ function runPart3Reset() {
   if (!isFarmingLoopActive) return;
 
   farmingLoopStep = 'part3_reset';
-  addFarmingLog(`🔄 [Part 3 Started] Running Reset Macro: '${selectedResetMacro}' via 3-dots Operation Recorder...`, 'info');
+  addFarmingLog(`🔄 [Part 3 Started] Running Reset Macro '${selectedResetMacro}' via 3-Dots Operation Recorder...`, 'info');
 
   fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedResetMacro, 'utf8'));
 
@@ -223,7 +223,7 @@ app.post('/api/mumu-macros/run', (req, res) => {
     activeFarmingChildProcess = null;
   }
 
-  addFarmingLog(`Manually triggering macro: '${macroName}'...`, 'info');
+  addFarmingLog(`Manually triggering macro: '${macroName}' via Operation Recorder...`, 'info');
 
   fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(macroName, 'utf8'));
 
