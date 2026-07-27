@@ -1,72 +1,99 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const scriptList = document.getElementById('scriptList') || document.querySelector('.macro-list') || document.body;
-  const screenImg = document.getElementById('screenImg') || document.querySelector('img');
+  const toggleSolverBtn = document.getElementById('toggleSolverBtn');
+  const solveOnceBtn = document.getElementById('solveOnceBtn');
+  const refreshStreamBtn = document.getElementById('refreshStreamBtn');
+  const clearLogsBtn = document.getElementById('clearLogsBtn');
+  const logsContainer = document.getElementById('logsContainer');
+  const statusBadge = document.getElementById('statusBadge');
+  const statusText = document.getElementById('statusText');
+  const screenImg = document.getElementById('screenImg');
 
-  async function loadMacros() {
-    try {
-      const res = await fetch('/api/mumu-macros');
-      const macros = await res.json();
-      
-      const container = document.getElementById('scriptList') || document.querySelector('.script-list') || document.querySelector('.macro-list');
-      if (!container) return;
+  let isSolverActive = false;
 
-      container.innerHTML = '';
-
-      if (!macros || macros.length === 0) {
-        container.innerHTML = '<div class="loading-text">ไม่พบสคริปต์ใน Operation Recorder</div>';
-        return;
-      }
-
-      macros.forEach((m) => {
-        const name = typeof m === 'string' ? m.replace('.mmor', '') : (m.name || m.filename.replace('.mmor', ''));
-        const item = document.createElement('div');
-        item.className = 'script-item macro-item';
-        item.style.display = 'flex';
-        item.style.justifyContent = 'space-between';
-        item.style.alignItems = 'center';
-        item.style.padding = '12px 16px';
-        item.style.marginBottom = '8px';
-        item.style.background = 'rgba(255, 255, 255, 0.05)';
-        item.style.borderRadius = '8px';
-
-        item.innerHTML = `
-          <div style="font-weight: 500; font-size: 1rem; color: #fff;">${name}</div>
-          <button class="blue-play-btn" data-name="${name}" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 1rem;">
-            ▶ เล่นสคริปต์
-          </button>
-        `;
-
-        container.appendChild(item);
-      });
-
-      document.querySelectorAll('.blue-play-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const macroName = btn.dataset.name;
-          try {
-            const r = await fetch('/api/mumu-macros/run', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ macroName })
-            });
-            const d = await r.json();
-            alert(d.message || `เริ่มสคริปต์ ${macroName} เรียบร้อย`);
-          } catch (e) {
-            alert('ไม่สามารถเริ่มสคริปต์ได้');
-          }
-        });
-      });
-
-    } catch (e) {
-      console.error('Error loading macros:', e);
-    }
-  }
-
-  function refreshScreenshot() {
+  function refreshScreen() {
     if (screenImg) {
       screenImg.src = '/api/screenshot?t=' + Date.now();
     }
   }
 
-  loadMacros();
-  setInterval(refreshScreenshot, 3000);
+  if (refreshStreamBtn) refreshStreamBtn.addEventListener('click', refreshScreen);
+  setInterval(refreshScreen, 3000);
+
+  async function pollStatus() {
+    try {
+      const res = await fetch('/api/captcha-solver/status');
+      const data = await res.json();
+
+      isSolverActive = data.active;
+      updateUIStatus(data.active);
+      updateLogs(data.logs || []);
+    } catch (e) {
+      console.error('Status poll error:', e);
+    }
+  }
+
+  function updateUIStatus(active) {
+    if (!toggleSolverBtn) return;
+    const btnText = toggleSolverBtn.querySelector('.btn-text');
+    const btnIcon = toggleSolverBtn.querySelector('.btn-icon');
+
+    if (active) {
+      if (statusBadge) statusBadge.classList.add('active');
+      if (statusText) statusText.textContent = 'กำลังสแกนแก้ CAPTCHA อัตโนมัติ';
+      if (btnIcon) btnIcon.textContent = '⏹';
+      if (btnText) btnText.textContent = 'หยุดระบบแก้ CAPTCHA อัตโนมัติ';
+      toggleSolverBtn.classList.add('active');
+    } else {
+      if (statusBadge) statusBadge.classList.remove('active');
+      if (statusText) statusText.textContent = 'พร้อมใช้งาน';
+      if (btnIcon) btnIcon.textContent = '▶';
+      if (btnText) btnText.textContent = 'เปิดระบบแก้ CAPTCHA อัตโนมัติ';
+      toggleSolverBtn.classList.remove('active');
+    }
+  }
+
+  function updateLogs(logs) {
+    if (!logsContainer) return;
+    logsContainer.innerHTML = '';
+    logs.forEach((log) => {
+      const div = document.createElement('div');
+      div.className = `log-entry ${log.type || 'info'}`;
+      div.textContent = `[${log.timestamp}] ${log.message}`;
+      logsContainer.appendChild(div);
+    });
+    logsContainer.scrollTop = logsContainer.scrollHeight;
+  }
+
+  if (clearLogsBtn) {
+    clearLogsBtn.addEventListener('click', () => {
+      if (logsContainer) logsContainer.innerHTML = '';
+    });
+  }
+
+  if (toggleSolverBtn) {
+    toggleSolverBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/captcha-solver/toggle', { method: 'POST' });
+        const data = await res.json();
+        isSolverActive = data.active;
+        updateUIStatus(data.active);
+      } catch (e) {
+        alert('เกิดข้อผิดพลาดในการเปิด/ปิดระบบ');
+      }
+    });
+  }
+
+  if (solveOnceBtn) {
+    solveOnceBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/captcha-solver/solve-once', { method: 'POST' });
+        const data = await res.json();
+        console.log('Manual solve:', data);
+      } catch (e) {
+        alert('เกิดข้อผิดพลาดในการแก้ CAPTCHA');
+      }
+    });
+  }
+
+  setInterval(pollStatus, 800);
 });

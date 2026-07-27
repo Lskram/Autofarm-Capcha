@@ -15,7 +15,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const MACRO_DIR = 'C:/Users/UsEr/AppData/Roaming/Netease/MuMuPlayerGlobal/data/gameScript';
 const SCRATCH_DIR = 'C:/Users/UsEr/.gemini/antigravity/scratch';
 
 // Detect ADB Executable
@@ -36,35 +35,77 @@ for (const p of adbCandidates) {
   } catch (e) {}
 }
 
-let activeMacroProcess = null;
+let isCaptchaSolverActive = false;
+let solverLogs = [];
+let activeSolverProcess = null;
 
-function getDetailedMacros() {
-  if (!fs.existsSync(MACRO_DIR)) return [];
-  const files = fs.readdirSync(MACRO_DIR).filter(f => f.endsWith('.mmor'));
-  const list = [];
+function addLog(message, type = 'info') {
+  const timestamp = new Date().toLocaleTimeString();
+  solverLogs.push({ timestamp, message, type });
+  console.log(`[CAPTCHA Solver] ${message}`);
+  if (solverLogs.length > 100) solverLogs.shift();
+}
 
-  for (const f of files) {
-    const filePath = path.join(MACRO_DIR, f);
-    const cleanName = f.replace('.mmor', '');
-    let durationMs = 0;
-    try {
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      durationMs = data.info?.total_running_time || 0;
-    } catch (e) {}
+function startCaptchaSolver() {
+  if (isCaptchaSolverActive) return;
+  isCaptchaSolverActive = true;
+  addLog("🚀 [System] CAPTCHA Auto-Solver System STARTED!", "success");
 
-    list.push({
-      filename: f,
-      name: cleanName,
-      durationText: durationMs > 0 ? `${Math.round(durationMs/1000)}s` : '30s'
+  // Run solver loop
+  function loop() {
+    if (!isCaptchaSolverActive) return;
+
+    exec(`python "${SCRATCH_DIR}/daemon_check.py"`, (err, stdout, stderr) => {
+      if (!isCaptchaSolverActive) return;
+
+      if (err === null) {
+        addLog("⚠️ [CAPTCHA Detected] Found CAPTCHA modal on screen! Launching Auto-Solver...", "warn");
+        
+        activeSolverProcess = exec(`python "${SCRATCH_DIR}/solve_until_done.py"`);
+
+        activeSolverProcess.stdout.on('data', (d) => {
+          const txt = d.toString().trim();
+          if (txt) addLog(txt, "muted");
+        });
+
+        activeSolverProcess.stderr.on('data', (d) => {
+          const txt = d.toString().trim();
+          if (txt) addLog(`[Solver Error] ${txt}`, "error");
+        });
+
+        activeSolverProcess.on('close', (code) => {
+          activeSolverProcess = null;
+          if (!isCaptchaSolverActive) return;
+
+          if (code === 0) {
+            addLog("✅ [CAPTCHA Solved] CAPTCHA solved successfully!", "success");
+          } else {
+            addLog(`⚠️ [Solver Ended] Solver finished with code ${code}`, "warn");
+          }
+
+          setTimeout(loop, 2000);
+        });
+      } else {
+        setTimeout(loop, 2500);
+      }
     });
   }
 
-  return list;
+  loop();
+}
+
+function stopCaptchaSolver() {
+  isCaptchaSolverActive = false;
+  if (activeSolverProcess) {
+    try { activeSolverProcess.kill(); } catch (e) {}
+    activeSolverProcess = null;
+  }
+  addLog("🛑 [System] CAPTCHA Auto-Solver System STOPPED.", "warn");
 }
 
 // Endpoints
 app.get('/api/status', (req, res) => {
-  res.json({ connected: true, device: 'MuMuPlayer' });
+  res.json({ connected: true, solverActive: isCaptchaSolverActive });
 });
 
 app.get('/api/screenshot', (req, res) => {
@@ -75,40 +116,38 @@ app.get('/api/screenshot', (req, res) => {
   });
 });
 
-app.get('/api/mumu-macros', (req, res) => {
-  res.json(getDetailedMacros());
+app.get('/api/captcha-solver/status', (req, res) => {
+  res.json({
+    active: isCaptchaSolverActive,
+    logs: solverLogs
+  });
 });
 
-app.post('/api/mumu-macros/run', (req, res) => {
-  const { macroName } = req.body;
-  if (!macroName) return res.status(400).json({ error: 'macroName is required' });
-
-  console.log(`[API] Executing macro: '${macroName}'...`);
-  fs.writeFileSync(path.join(SCRATCH_DIR, 'current_macro.txt'), Buffer.from(macroName, 'utf8'));
-
-  if (activeMacroProcess) {
-    try { activeMacroProcess.kill(); } catch (e) {}
+app.post('/api/captcha-solver/toggle', (req, res) => {
+  if (isCaptchaSolverActive) {
+    stopCaptchaSolver();
+  } else {
+    startCaptchaSolver();
   }
-
-  activeMacroProcess = spawn('python', [
-    path.join(SCRATCH_DIR, 'play_mumu_macro_gui.py'),
-    '--from-file'
-  ]);
-
-  activeMacroProcess.stdout.on('data', (d) => console.log(`[Python] ${d.toString().trim()}`));
-  activeMacroProcess.stderr.on('data', (d) => console.error(`[Python Err] ${d.toString().trim()}`));
-
-  res.json({ success: true, message: `Macro '${macroName}' started` });
+  res.json({ active: isCaptchaSolverActive });
 });
 
-app.get('/api/farming-loop', (req, res) => {
-  res.json({ active: false, step: 'idle', logs: [] });
+app.post('/api/captcha-solver/solve-once', (req, res) => {
+  addLog("⚡ [Manual Trigger] Running 1-Time CAPTCHA Solve...", "info");
+  exec(`python "${SCRATCH_DIR}/solve_until_done.py"`, (err, stdout, stderr) => {
+    if (err) {
+      addLog(`⚠️ Manual Solve Ended: ${err.message}`, "warn");
+    } else {
+      addLog("✅ Manual CAPTCHA Solve Execution Completed!", "success");
+    }
+  });
+  res.json({ success: true, message: "Manual CAPTCHA Solver triggered" });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`=========================================`);
-  console.log(` MuMu Remote Controller Server Active! `);
-  console.log(` Local URL: http://localhost:${PORT} `);
-  console.log(` MuMu URL : http://10.0.2.2:${PORT} `);
-  console.log(`=========================================`);
+  console.log(`=======================================================`);
+  console.log(` Dedicated CAPTCHA Auto-Solver Server Active! `);
+  console.log(` Local URL : http://localhost:${PORT} `);
+  console.log(` MuMu URL  : http://10.0.2.2:${PORT} `);
+  console.log(`=======================================================`);
 });
