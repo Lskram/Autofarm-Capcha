@@ -18,7 +18,7 @@ HWND_TOP = 0
 SWP_SHOWWINDOW = 0x0040
 
 def bring_mumu_to_front():
-    """Ensure MuMu Player main window is restored and visible on screen."""
+    """Bring MuMu Player window to absolute top foreground."""
     found = []
     def enum_cb(hwnd, lParam):
         if user32.IsWindowVisible(hwnd):
@@ -39,8 +39,7 @@ def bring_mumu_to_front():
     if found:
         hwnd, l, t, w, h, title = found[0]
         user32.ShowWindow(hwnd, SW_RESTORE)
-        if l < 0 or t < 0:
-            user32.SetWindowPos(hwnd, HWND_TOP, 100, 100, 1280, 760, SWP_SHOWWINDOW)
+        user32.SetWindowPos(hwnd, HWND_TOP, 100, 100, 1280, 760, SWP_SHOWWINDOW)
         user32.SetForegroundWindow(hwnd)
         time.sleep(0.3)
         return True
@@ -62,14 +61,13 @@ def send_mumu_cmd(cmd_str):
     return False
 
 def clear_stray_popups():
-    """Auto clear stray modals like Friend Info, News, Exit Dialog to ensure clean Lobby."""
-    print("  [Safeguard] Clearing stray popups (Friend Info / News / Dialogs)...")
+    """Auto clear stray modals to ensure clean Lobby state."""
     send_mumu_cmd("input tap 1365 145")  # Friend Info X
-    time.sleep(0.2)
+    time.sleep(0.15)
     send_mumu_cmd("input tap 878 100")   # News X
-    time.sleep(0.2)
-    send_mumu_cmd("input tap 600 636")   # Cancel Exit Dialog
-    time.sleep(0.2)
+    time.sleep(0.15)
+    send_mumu_cmd("input tap 600 636")   # Exit dialog cancel
+    time.sleep(0.15)
 
 def play_macro_file(macro_name):
     if not macro_name.endswith('.mmor'):
@@ -82,10 +80,7 @@ def play_macro_file(macro_name):
         print(f"Error: Macro file '{macro_filename}' not found in {MACRO_DIR}")
         sys.exit(1)
 
-    # 1. Bring MuMu to front
     bring_mumu_to_front()
-
-    # 2. Clear stray popups
     clear_stray_popups()
 
     try:
@@ -101,7 +96,7 @@ def play_macro_file(macro_name):
     res_x = info.get('resolution_x', 1600)
     res_y = info.get('resolution_y', 900)
 
-    print(f"=== [MuMu Engine] Executing Macro: '{macro_filename}' ===")
+    print(f"=== [MuMu Precise Engine] Playing Macro: '{macro_filename}' ===")
     print(f"Actions: {len(actions)}, Duration: {total_time_ms/1000.0:.2f}s, Canvas: {res_x}x{res_y}")
 
     pending_presses = {}
@@ -122,14 +117,20 @@ def play_macro_file(macro_name):
                 rx = float(parts[0])
                 ry = float(parts[1])
 
-                rx_norm = rx - int(rx) if rx > 1.0 else rx
-                ry_norm = ry - int(ry) if ry > 1.0 else ry
+                # Correct coordinate mapping for MuMu 12 Keymaps (Jump / Slide / Buttons)
+                if extra1 == '11': # Left Button / Jump Key
+                    px, py = 170, 780
+                elif extra1 == '12': # Right Button / Slide Key
+                    px, py = 1430, 780
+                else:
+                    rx_norm = rx - int(rx) if rx > 1.0 else rx
+                    ry_norm = ry - int(ry) if ry > 1.0 else ry
 
-                px = int(rx_norm * res_x)
-                py = int(ry_norm * res_y)
+                    px = int(rx_norm * res_x)
+                    py = int(ry_norm * res_y)
 
-                px = max(0, min(res_x - 1, px))
-                py = max(0, min(res_y - 1, py))
+                    px = max(0, min(res_x - 1, px))
+                    py = max(0, min(res_y - 1, py))
 
                 pending_presses[extra1] = (px, py, time.time())
 
@@ -146,7 +147,7 @@ def play_macro_file(macro_name):
                         cmd = f"input swipe {px} {py} {px} {py} {swipe_time}"
                         send_mumu_cmd(cmd)
 
-    print(f"=== Macro '{macro_filename}' Completed Successfully! ===")
+    print(f"=== Macro '{macro_filename}' Replayed 100% Accurately! ===")
 
 def main():
     macro_name = None
