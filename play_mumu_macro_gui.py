@@ -61,6 +61,16 @@ def send_mumu_cmd(cmd_str):
     subprocess.run([ADB_PATH, "-s", PORT, "shell"] + cmd_parts, capture_output=True)
     return False
 
+def clear_stray_popups():
+    """Auto clear stray modals like Friend Info, News, Exit Dialog to ensure clean Lobby."""
+    print("  [Safeguard] Clearing stray popups (Friend Info / News / Dialogs)...")
+    send_mumu_cmd("input tap 1365 145")  # Friend Info X
+    time.sleep(0.2)
+    send_mumu_cmd("input tap 878 100")   # News X
+    time.sleep(0.2)
+    send_mumu_cmd("input tap 600 636")   # Cancel Exit Dialog
+    time.sleep(0.2)
+
 def play_macro_file(macro_name):
     if not macro_name.endswith('.mmor'):
         macro_filename = macro_name + '.mmor'
@@ -72,8 +82,11 @@ def play_macro_file(macro_name):
         print(f"Error: Macro file '{macro_filename}' not found in {MACRO_DIR}")
         sys.exit(1)
 
-    # Bring MuMu to front
+    # 1. Bring MuMu to front
     bring_mumu_to_front()
+
+    # 2. Clear stray popups
+    clear_stray_popups()
 
     try:
         with open(macro_path, 'r', encoding='utf-8') as f:
