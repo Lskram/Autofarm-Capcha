@@ -1,74 +1,244 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Operation Recorder Web Controller</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <title>MuMu Player Web Remote Controller</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css?v=2.0">
+  
+  <style>
+    /* Premium Farming Loop Custom Styling */
+    .loop-status-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      margin-top: 12px;
+      transition: all 0.3s ease;
+    }
+    
+    .status-indicator-large {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      position: relative;
+    }
+    
+    .status-indicator-large.idle {
+      background-color: var(--text-muted);
+      box-shadow: 0 0 10px rgba(156, 163, 175, 0.2);
+    }
+    
+    .status-indicator-large.play {
+      background-color: var(--color-primary);
+      box-shadow: 0 0 15px var(--color-primary-glow);
+      animation: pulse 1.5s infinite;
+    }
+    
+    .status-indicator-large.captcha {
+      background-color: var(--color-amber);
+      box-shadow: 0 0 15px var(--color-amber-glow);
+      animation: pulse 1.5s infinite;
+    }
+    
+    .status-indicator-large.reset {
+      background-color: var(--color-violet);
+      box-shadow: 0 0 15px var(--color-violet-glow);
+      animation: pulse 1.5s infinite;
+    }
+    
+    .btn-loop-off {
+      background: rgba(75, 85, 99, 0.3);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      box-shadow: none;
+    }
+    
+    .btn-loop-on {
+      background: linear-gradient(135deg, var(--color-emerald), #047857) !important;
+      color: #fff !important;
+      border: none !important;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
+      animation: buttonPulse 2s infinite;
+    }
+
+    @keyframes buttonPulse {
+      0% { box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 4px 25px rgba(16, 185, 129, 0.7); }
+      100% { box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.6; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Highlighted Macro Selectors */
+    .form-select {
+      width: 100%;
+      background-color: var(--bg-input);
+      border: 1px solid rgba(59, 130, 246, 0.3); /* Soft blue border */
+      color: var(--text-main);
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 16px; /* Larger font */
+      font-weight: 500;
+      outline: none;
+      transition: all 0.3s;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .form-select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 10px var(--color-primary-glow);
+    }
+  </style>
 </head>
 <body>
   <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="logo-area">
-        <span class="logo-icon">📱</span>
-        <h1>Operation Recorder Controller</h1>
-      </div>
-      <div class="header-actions">
-        <div class="status-badge" id="statusBadge">
-          <span class="status-dot"></span>
-          <span id="statusText">พร้อมใช้งาน</span>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-icon">M</div>
+        <div class="logo-text">
+          <h1>MuMu Control</h1>
+          <span>Nexus Edition</span>
         </div>
-        <button id="toggleFarmingBtn" class="btn btn-primary">
-          <span class="btn-icon">▶</span>
-          <span class="btn-text">เริ่มทำงานอัตโนมัติ (Start Loop)</span>
-        </button>
       </div>
-    </header>
+      
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="remote">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          Farming Controller
+        </button>
+      </nav>
 
-    <!-- Main Content Layout -->
-    <div class="main-grid">
-      <!-- Left Column: Operation Recorder Scripts List (เหมือนในภาพเป๊ะๆ) -->
-      <section class="card recorder-card">
-        <div class="card-header">
-          <h2>📋 Operation Recorder Scripts</h2>
-          <button class="btn btn-sm btn-outline" id="refreshScriptsBtn">🔄 รีเฟรชรายการ</button>
+      <div class="connection-status">
+        <div class="status-indicator offline" id="status-dot"></div>
+        <div class="status-info">
+          <div class="status-label" id="status-text">Connecting...</div>
+          <div class="status-details" id="device-model">-</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top header bar -->
+      <header class="header">
+        <div class="header-title">
+          <h2 id="current-tab-title">Farming Controller</h2>
+          <p id="current-tab-desc">Automate your game farming loop with MuMu macros and auto-captcha solving.</p>
         </div>
         
-        <!-- List Container -->
-        <div class="script-list" id="scriptList">
-          <div class="loading-text">กำลังโหลดรายการสคริปต์...</div>
+        <div class="connection-config">
+          <div class="input-group">
+            <label for="port-input">ADB Port:</label>
+            <input type="text" id="port-input" value="127.0.0.1:16384" placeholder="127.0.0.1:16384">
+            <button id="btn-connect" class="btn btn-secondary">Connect</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- TAB 1: REMOTE SCREEN & FARMING CONTROLLER -->
+      <section class="tab-panel active" id="tab-remote">
+        <div class="screen-layout">
+          <!-- Left side: The screen viewport -->
+          <div class="viewport-card">
+            <div class="viewport-header">
+              <div class="screen-controls">
+                <button id="btn-refresh" class="btn btn-icon" title="Refresh Screen">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="chk-auto-refresh" checked>
+                  <label for="chk-auto-refresh">Auto Refresh</label>
+                </div>
+                <select id="sel-refresh-rate">
+                  <option value="500">0.5s (Stream)</option>
+                  <option value="1000">1.0s</option>
+                  <option value="2000" selected>2.0s</option>
+                  <option value="5000">5.0s</option>
+                </select>
+                <span class="resolution-badge" id="res-badge">0x0</span>
+              </div>
+              <div class="coordinate-display" id="coord-display">X: --, Y: --</div>
+            </div>
+
+            <div class="screen-canvas-wrapper" id="canvas-container">
+              <div class="loading-overlay" id="screen-loading">
+                <div class="spinner"></div>
+                <span>Loading Emulator Screen...</span>
+              </div>
+              <img id="emulator-screen" src="" alt="Emulator Screen" style="display: none;">
+              <!-- Overlay to receive pointer events -->
+              <div class="screen-overlay" id="screen-overlay"></div>
+            </div>
+            
+            <div class="screencap-tip">
+              💡 Interactive view: Tap/swipe directly on the screen to control MuMu Player.
+            </div>
+          </div>
+
+          <!-- Right side: Farming Loop Controller Panel -->
+          <div class="controls-card" id="farming-controller-panel">
+            <h3>Farming Loop Controller</h3>
+            <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">Select your recorded MuMu macros and toggle the Farming Loop to run automatically.</p>
+            
+            <div class="form-group">
+              <label for="sel-play-macro" style="display: block; margin-bottom: 8px; font-weight: 700; color: #60a5fa;">🎮 Part 1: Play Game Macro</label>
+              <div style="display: flex; gap: 8px;">
+                <select id="sel-play-macro" class="form-select" style="flex: 1;">
+                  <option value="">Loading macros list...</option>
+                </select>
+                <button id="btn-run-play" class="btn btn-secondary" style="padding: 10px 14px; white-space: nowrap;" title="Run this macro once manually">▶️ Play</button>
+              </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+              <label for="sel-reset-macro" style="display: block; margin-bottom: 8px; font-weight: 700; color: #c084fc;">🔄 Part 3: Post-Game/Reset Macro</label>
+              <div style="display: flex; gap: 8px;">
+                <select id="sel-reset-macro" class="form-select" style="flex: 1;">
+                  <option value="">Loading macros list...</option>
+                </select>
+                <button id="btn-run-reset" class="btn btn-secondary" style="padding: 10px 14px; white-space: nowrap;" title="Run this macro once manually">▶️ Play</button>
+              </div>
+            </div>
+            
+            <div class="loop-switch-container" style="margin-top: 28px;">
+              <button id="btn-toggle-loop" class="btn w-full btn-loop-off" style="font-weight: 700; padding: 16px 20px; font-size: 16px; border-radius: var(--radius-md); transition: all 0.3s ease;">
+                🛡️ Farming Loop: OFF
+              </button>
+            </div>
+            
+            <h3 style="margin-top: 30px;">Current Active Step</h3>
+            <div class="loop-status-card" id="loop-status-card">
+              <div class="status-indicator-large idle" id="loop-status-indicator"></div>
+              <span id="loop-status-text" style="font-weight: 600;">Farming Loop Inactive</span>
+            </div>
+            
+            <h3 style="margin-top: 30px;">Farming Loop History</h3>
+            <div class="log-panel" id="farming-logs" style="height: 180px; overflow-y: auto; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; font-family: var(--font-mono); font-size: 11px;">
+              <div class="log-line text-muted">Loop ready. Configure macros and start.</div>
+            </div>
+          </div>
+
+          </div>
         </div>
       </section>
-
-      <!-- Right Column: Live View & System Logs -->
-      <section class="right-column">
-        <!-- Live Stream Card -->
-        <div class="card live-card">
-          <div class="card-header">
-            <h2>📺 จอแสดงผล MuMu</h2>
-            <button class="btn btn-sm btn-outline" id="refreshStreamBtn">🔄 รีเฟรช</button>
-          </div>
-          <div class="stream-wrapper">
-            <img id="screenImg" src="/api/screenshot" alt="MuMu Live Screen" loading="eager">
-          </div>
-        </div>
-
-        <!-- Logs Card -->
-        <div class="card logs-card">
-          <div class="card-header">
-            <h2>📜 บันทึกสถานะ (System Logs)</h2>
-            <button class="btn btn-sm btn-outline" id="clearLogsBtn">🗑️ เคลียร์</button>
-          </div>
-          <div class="logs-container" id="logsContainer">
-            <div class="log-entry muted">[System] ระบบพร้อมใช้งานแล้ว</div>
-          </div>
-        </div>
-      </section>
-    </div>
+    </main>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.0"></script>
 </body>
 </html>
