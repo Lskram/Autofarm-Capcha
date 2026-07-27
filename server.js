@@ -1,8 +1,10 @@
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { exec, spawn } from 'child_process';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +12,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -34,7 +37,7 @@ for (const p of adbCandidates) {
 }
 
 let isFarmingLoopActive = false;
-let farmingLoopStep = 'idle'; // 'idle', 'part1_play', 'part2_detect', 'part3_reset'
+let farmingLoopStep = 'idle';
 let activeFarmingChildProcess = null;
 let activeMacroName = '';
 let selectedPlayMacro = 'oneBox';
@@ -115,7 +118,6 @@ function spawnMacroProcess(macroName, onFinish) {
     const text = data.toString().trim();
     if (text) {
       if (text.includes('[PROGRESS]')) {
-        // Parse progress format: [PROGRESS] 45% (13.8s / 30.8s)
         try {
           const parts = text.split('[PROGRESS]')[1].trim().split(' ');
           const pct = parseInt(parts[0].replace('%', '')) || 0;
@@ -158,7 +160,6 @@ function runFarmingLoopStep() {
     return;
   }
 
-  // --- PART 1 ---
   farmingLoopStep = 'part1_play';
   addFarmingLog(`🎮 [Part 1 Started] Playing Macro: '${selectedPlayMacro}'...`, 'info');
 
@@ -311,9 +312,25 @@ app.post('/api/farming-loop/toggle', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`=========================================`);
+// Helper to get local IP address
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+app.listen(PORT, '0.0.0.0', () => {
+  const localIP = getLocalIP();
+  console.log(`=======================================================`);
   console.log(` MuMu Farming Controller Server Active! `);
-  console.log(` Local URL: http://localhost:${PORT} `);
-  console.log(`=========================================`);
+  console.log(` Local Windows URL : http://localhost:${PORT} `);
+  console.log(` MuMu Android URL  : http://10.0.2.2:${PORT} `);
+  console.log(` LAN Network URL   : http://${localIP}:${PORT} `);
+  console.log(`=======================================================`);
 });
