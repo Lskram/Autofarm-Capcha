@@ -13,6 +13,8 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const MACRO_DIR = 'C:/Users/UsEr/AppData/Roaming/Netease/MuMuPlayerGlobal/data/gameScript';
+
 // Detect ADB Executable
 const adbCandidates = [
   'D:\\Program Files\\Netease\\MuMuPlayer\\nx_main\\adb.exe',
@@ -34,8 +36,8 @@ for (const p of adbCandidates) {
 let isFarmingLoopActive = false;
 let farmingLoopStep = 'idle'; // 'idle', 'part1_play', 'part2_detect', 'part3_reset'
 let activeFarmingChildProcess = null;
-let selectedPlayMacro = '';
-let selectedResetMacro = '';
+let selectedPlayMacro = 'oneBox';
+let selectedResetMacro = 'Leavetoloby';
 let farmingLogs = [];
 
 function addFarmingLog(message, type = 'info') {
@@ -45,19 +47,64 @@ function addFarmingLog(message, type = 'info') {
   if (farmingLogs.length > 100) farmingLogs.shift();
 }
 
-// ----------------------------------------------------
-// Farming Loop Sequential Pipeline (Part 1 -> Part 2 -> Part 3)
-// ----------------------------------------------------
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return '0 วินาที';
+  const sec = Math.round(ms / 1000);
+  if (sec < 60) return `${sec} วินาที`;
+  const min = Math.floor(sec / 60);
+  const remSec = sec % 60;
+  return remSec > 0 ? `${min} นาที ${remSec} วินาที` : `${min} นาที`;
+}
 
+// Read Detailed Macro Info
+function getDetailedMacros() {
+  if (!fs.existsSync(MACRO_DIR)) return [];
+  
+  const files = fs.readdirSync(MACRO_DIR).filter(f => f.endsWith('.mmor'));
+  const list = [];
+
+  for (const f of files) {
+    const filePath = path.join(MACRO_DIR, f);
+    const cleanName = f.replace('.mmor', '');
+    let durationMs = 0;
+    let resX = 1600;
+    let resY = 900;
+    let createTime = 0;
+
+    try {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const info = data.info || {};
+      durationMs = info.total_running_time || 0;
+      resX = info.resolution_x || 1600;
+      resY = info.resolution_y || 900;
+      createTime = info.create_time || 0;
+    } catch (e) {}
+
+    list.push({
+      filename: f,
+      name: cleanName,
+      durationMs,
+      durationText: formatDuration(durationMs),
+      resolution: `${resX} × ${resY}`,
+      createTime
+    });
+  }
+
+  // Sort newest first
+  list.sort((a, b) => b.createTime - a.createTime);
+  return list;
+}
+
+// Pipeline: Part 1 -> Part 2 -> Part 3
 function runFarmingLoopStep() {
   if (!isFarmingLoopActive) {
     farmingLoopStep = 'idle';
     return;
   }
 
-  // --- PART 1: Play Game Macro via 3-Dots Operation Recorder ---
+  // --- PART 1 ---
   farmingLoopStep = 'part1_play';
-  addFarmingLog(`🎮 [Part 1 Started] Running Play Macro '${selectedPlayMacro}' via 3-Dots Operation Recorder...`, 'info');
+  addFarmingLog(`🎮 [Part 1 Started] Playing Macro: '${selectedPlayMacro}'...`, 'info');
 
   fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedPlayMacro, 'utf8'));
   
@@ -81,13 +128,10 @@ function runFarmingLoopStep() {
     if (!isFarmingLoopActive) return;
 
     addFarmingLog(`✅ [Part 1 Completed] Play macro finished. Transitioning to Part 2...`, 'success');
-    
-    // Proceed to PART 2 only after Part 1 finishes!
     runPart2Detection();
   });
 }
 
-// --- PART 2: Detection & Success Verification ---
 function runPart2Detection() {
   if (!isFarmingLoopActive) return;
 
@@ -98,7 +142,6 @@ function runPart2Detection() {
     if (!isFarmingLoopActive) return;
 
     if (error === null) {
-      // CAPTCHA detected! Run solver
       addFarmingLog(`⚠️ [Part 2 Detection] CAPTCHA detected! Running auto-solver...`, 'warn');
 
       activeFarmingChildProcess = exec('python "C:/Users/UsEr/.gemini/antigravity/scratch/solve_until_done.py"');
@@ -127,7 +170,6 @@ function runPart2Detection() {
         runPart3Reset();
       });
     } else {
-      // No CAPTCHA detected, Part 2 success verified
       addFarmingLog(`✅ [Part 2 Verified] Screen state verified clean!`, 'success');
       addFarmingLog(`🏁 [Part 2 Ended] Proceeding to Part 3 (Reset Macro)...`, 'info');
       runPart3Reset();
@@ -135,12 +177,11 @@ function runPart2Detection() {
   });
 }
 
-// --- PART 3: Reset Macro / Leave to Lobby ---
 function runPart3Reset() {
   if (!isFarmingLoopActive) return;
 
   farmingLoopStep = 'part3_reset';
-  addFarmingLog(`🔄 [Part 3 Started] Running Reset Macro '${selectedResetMacro}' via 3-Dots Operation Recorder...`, 'info');
+  addFarmingLog(`🔄 [Part 3 Started] Playing Reset Macro: '${selectedResetMacro}'...`, 'info');
 
   fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedResetMacro, 'utf8'));
 
@@ -165,7 +206,6 @@ function runPart3Reset() {
 
     addFarmingLog(`✅ [Part 3 Completed] Reset Macro finished. Restarting Farming Loop...`, 'success');
 
-    // Loop back to Part 1
     setTimeout(() => {
       if (isFarmingLoopActive) runFarmingLoopStep();
     }, 1500);
@@ -182,7 +222,7 @@ function stopFarmingLoop() {
   addFarmingLog(`🛑 Farming Loop STOPPED.`, 'warn');
 }
 
-// API Endpoints
+// Endpoints
 app.get('/api/status', (req, res) => {
   res.json({ connected: true });
 });
@@ -196,18 +236,8 @@ app.get('/api/screenshot', (req, res) => {
 });
 
 app.get('/api/mumu-macros', (req, res) => {
-  const macroDir = 'C:/Users/UsEr/AppData/Roaming/Netease/MuMuPlayerGlobal/data/gameScript';
-  try {
-    if (!fs.existsSync(macroDir)) return res.json([]);
-    const files = fs.readdirSync(macroDir);
-    const macros = files
-      .filter(f => f.endsWith('.mmor'))
-      .map(f => f.replace('.mmor', ''))
-      .sort((a, b) => a.localeCompare(b, 'th'));
-    res.json(macros);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to list macros' });
-  }
+  const macros = getDetailedMacros();
+  res.json(macros);
 });
 
 app.post('/api/mumu-macros/run', (req, res) => {
@@ -223,7 +253,7 @@ app.post('/api/mumu-macros/run', (req, res) => {
     activeFarmingChildProcess = null;
   }
 
-  addFarmingLog(`Manually triggering macro: '${macroName}' via Operation Recorder...`, 'info');
+  addFarmingLog(`▶️ Executing macro: '${macroName}'...`, 'info');
 
   fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(macroName, 'utf8'));
 
@@ -239,12 +269,12 @@ app.post('/api/mumu-macros/run', (req, res) => {
 
   activeFarmingChildProcess.stderr.on('data', (data) => {
     const text = data.toString().trim();
-    if (text) addFarmingLog(`[Manual Macro Error] ${text}`, 'error');
+    if (text) addFarmingLog(`[Macro Error] ${text}`, 'error');
   });
 
   activeFarmingChildProcess.on('close', (code) => {
     activeFarmingChildProcess = null;
-    addFarmingLog(`Manual macro finished with exit code ${code}`, code === 0 ? 'success' : 'warn');
+    addFarmingLog(`Macro '${macroName}' finished with exit code ${code}`, code === 0 ? 'success' : 'warn');
   });
 
   res.json({ success: true, message: `Macro '${macroName}' started` });

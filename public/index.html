@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MuMu Silent Controller</title>
+  <title>Operation Recorder Web Controller</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
@@ -12,66 +12,57 @@
     <!-- Header -->
     <header class="app-header">
       <div class="logo-area">
-        <span class="logo-icon">⚡</span>
-        <h1>MuMu Controller</h1>
+        <span class="logo-icon">📱</span>
+        <h1>Operation Recorder Controller</h1>
       </div>
-      <div class="status-badge" id="statusBadge">
-        <span class="status-dot"></span>
-        <span id="statusText">พร้อมใช้งาน</span>
+      <div class="header-actions">
+        <div class="status-badge" id="statusBadge">
+          <span class="status-dot"></span>
+          <span id="statusText">พร้อมใช้งาน</span>
+        </div>
+        <button id="toggleFarmingBtn" class="btn btn-primary">
+          <span class="btn-icon">▶</span>
+          <span class="btn-text">เริ่มทำงานอัตโนมัติ (Start Loop)</span>
+        </button>
       </div>
     </header>
 
-    <!-- Main Content Grid -->
+    <!-- Main Content Layout -->
     <div class="main-grid">
-      <!-- Left Column: Live View & Quick Run -->
-      <section class="card live-card">
+      <!-- Left Column: Operation Recorder Scripts List (เหมือนในภาพเป๊ะๆ) -->
+      <section class="card recorder-card">
         <div class="card-header">
-          <h2>📺 จอแสดงผล MuMu</h2>
-          <button class="btn btn-sm btn-outline" id="refreshStreamBtn">🔄 รีเฟรช</button>
+          <h2>📋 Operation Recorder Scripts</h2>
+          <button class="btn btn-sm btn-outline" id="refreshScriptsBtn">🔄 รีเฟรชรายการ</button>
         </div>
-        <div class="stream-wrapper">
-          <img id="screenImg" src="/api/screenshot" alt="MuMu Live Screen" loading="eager">
+        
+        <!-- List Container -->
+        <div class="script-list" id="scriptList">
+          <div class="loading-text">กำลังโหลดรายการสคริปต์...</div>
         </div>
       </section>
 
-      <!-- Right Column: Control Panel & Logs -->
+      <!-- Right Column: Live View & System Logs -->
       <section class="right-column">
-        <!-- Control Panel Card -->
-        <div class="card control-card">
+        <!-- Live Stream Card -->
+        <div class="card live-card">
           <div class="card-header">
-            <h2>🕹️ แผงควบคุมระบบ (ปุ่มเดียว)</h2>
+            <h2>📺 จอแสดงผล MuMu</h2>
+            <button class="btn btn-sm btn-outline" id="refreshStreamBtn">🔄 รีเฟรช</button>
           </div>
-
-          <div class="form-group">
-            <label for="playMacroSelect">🎮 สคริปต์ด่าน (Part 1 Play):</label>
-            <select id="playMacroSelect" class="form-select"></select>
-          </div>
-
-          <div class="form-group">
-            <label for="resetMacroSelect">🔄 สคริปต์กลับ Lobby (Part 3 Reset):</label>
-            <select id="resetMacroSelect" class="form-select"></select>
-          </div>
-
-          <div class="button-group">
-            <button id="toggleFarmingBtn" class="btn btn-primary btn-large">
-              <span class="btn-icon">▶</span>
-              <span class="btn-text">เริ่มทำงานอัตโนมัติ (Start Loop)</span>
-            </button>
-
-            <button id="runSingleMacroBtn" class="btn btn-secondary">
-              ⚡ รันสคริปต์เดียวทันที
-            </button>
+          <div class="stream-wrapper">
+            <img id="screenImg" src="/api/screenshot" alt="MuMu Live Screen" loading="eager">
           </div>
         </div>
 
-        <!-- System Logs Card -->
+        <!-- Logs Card -->
         <div class="card logs-card">
           <div class="card-header">
             <h2>📜 บันทึกสถานะ (System Logs)</h2>
             <button class="btn btn-sm btn-outline" id="clearLogsBtn">🗑️ เคลียร์</button>
           </div>
           <div class="logs-container" id="logsContainer">
-            <div class="log-entry muted">[System] ระบบเริ่มต้นการทำงานเบื้องหลังแล้ว</div>
+            <div class="log-entry muted">[System] ระบบพร้อมใช้งานแล้ว</div>
           </div>
         </div>
       </section>

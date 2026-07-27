@@ -1,8 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const playMacroSelect = document.getElementById('playMacroSelect');
-  const resetMacroSelect = document.getElementById('resetMacroSelect');
+  const scriptList = document.getElementById('scriptList');
   const toggleFarmingBtn = document.getElementById('toggleFarmingBtn');
-  const runSingleMacroBtn = document.getElementById('runSingleMacroBtn');
+  const refreshScriptsBtn = document.getElementById('refreshScriptsBtn');
   const refreshStreamBtn = document.getElementById('refreshStreamBtn');
   const clearLogsBtn = document.getElementById('clearLogsBtn');
   const logsContainer = document.getElementById('logsContainer');
@@ -10,51 +9,105 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusText = document.getElementById('statusText');
   const screenImg = document.getElementById('screenImg');
 
+  let selectedPlayMacro = 'oneBox';
+  let selectedResetMacro = 'Leavetoloby';
   let isLoopActive = false;
 
-  // Load Macro Options
-  async function loadMacros() {
+  // Load Detailed Script List from Operation Recorder
+  async function loadScripts() {
     try {
       const res = await fetch('/api/mumu-macros');
       const macros = await res.json();
 
-      playMacroSelect.innerHTML = '';
-      resetMacroSelect.innerHTML = '';
+      scriptList.innerHTML = '';
 
-      if (macros.length === 0) {
-        playMacroSelect.innerHTML = '<option value="">ไม่พบสคริปต์มาโคร</option>';
-        resetMacroSelect.innerHTML = '<option value="">ไม่พบสคริปต์มาโคร</option>';
+      if (!macros || macros.length === 0) {
+        scriptList.innerHTML = '<div class="loading-text">ไม่พบสคริปต์ใน Operation Recorder</div>';
         return;
       }
 
       macros.forEach((m) => {
-        const opt1 = document.createElement('option');
-        opt1.value = m;
-        opt1.textContent = m;
-        playMacroSelect.appendChild(opt1);
+        const item = document.createElement('div');
+        item.className = 'script-item';
 
-        const opt2 = document.createElement('option');
-        opt2.value = m;
-        opt2.textContent = m;
-        resetMacroSelect.appendChild(opt2);
+        const isPlayActive = m.name === selectedPlayMacro;
+        const isResetActive = m.name === selectedResetMacro;
+
+        item.innerHTML = `
+          <div class="script-info">
+            <div class="script-name">${m.name}</div>
+            <div class="script-meta">Executed 1 time(${m.durationText}) | ${m.resolution}</div>
+          </div>
+          <div class="script-actions">
+            <div class="role-select-group">
+              <button class="role-btn ${isPlayActive ? 'active-play' : ''}" data-role="play" data-name="${m.name}">
+                ${isPlayActive ? '🎮 Part 1 (ด่าน)' : 'Part 1'}
+              </button>
+              <button class="role-btn ${isResetActive ? 'active-reset' : ''}" data-role="reset" data-name="${m.name}">
+                ${isResetActive ? '🔄 Part 3 (Lobby)' : 'Part 3'}
+              </button>
+            </div>
+            <button class="blue-play-btn" data-run="${m.name}" title="เล่นสคริปต์ ${m.name}">
+              ▶
+            </button>
+          </div>
+        `;
+
+        scriptList.appendChild(item);
       });
 
-      // Default selection if available
-      if (macros.includes('oneBox')) playMacroSelect.value = 'oneBox';
-      if (macros.includes('Leavetoloby')) resetMacroSelect.value = 'Leavetoloby';
+      // Bind Play & Role Events
+      bindScriptEvents();
 
     } catch (e) {
-      console.error('Failed to load macros:', e);
+      console.error('Failed to load scripts:', e);
+      scriptList.innerHTML = '<div class="loading-text">เกิดข้อผิดพลาดในการโหลดรายการสคริปต์</div>';
     }
   }
 
-  // Refresh Screen Stream
+  function bindScriptEvents() {
+    // Blue Play Button Event (ตรงตามภาพถ่ายเป๊ะๆ)
+    document.querySelectorAll('.blue-play-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const macroName = btn.dataset.run;
+        if (!macroName) return;
+
+        try {
+          const res = await fetch('/api/mumu-macros/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ macroName })
+          });
+          const data = await res.json();
+          if (!res.ok) alert(data.error || 'เกิดข้อผิดพลาด');
+        } catch (e) {
+          alert('ไม่สามารถเริ่มสคริปต์ได้');
+        }
+      });
+    });
+
+    // Role Selection Buttons (Part 1 / Part 3)
+    document.querySelectorAll('.role-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const role = btn.dataset.role;
+        const name = btn.dataset.name;
+
+        if (role === 'play') selectedPlayMacro = name;
+        if (role === 'reset') selectedResetMacro = name;
+
+        loadScripts(); // Re-render badges
+      });
+    });
+  }
+
+  // Refresh Screen
   function refreshScreen() {
     screenImg.src = '/api/screenshot?t=' + Date.now();
   }
 
   refreshStreamBtn.addEventListener('click', refreshScreen);
-  setInterval(refreshScreen, 3000); // Polling screenshot every 3s
+  refreshScriptsBtn.addEventListener('click', loadScripts);
+  setInterval(refreshScreen, 3000);
 
   // Poll Loop Status & Logs
   async function pollStatus() {
@@ -63,6 +116,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       isLoopActive = data.active;
+      if (data.playMacro) selectedPlayMacro = data.playMacro;
+      if (data.resetMacro) selectedResetMacro = data.resetMacro;
+
       updateUIStatus(data.active, data.step);
       updateLogs(data.logs || []);
 
@@ -85,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (step === 'part3_reset') stepLabel = 'Part 3: กลับ Lobby';
 
       statusText.textContent = stepLabel;
-      btnText.textContent = 'หยุดทำงานอัตโนมัติ (Stop Loop)';
+      btnText.textContent = 'หยุดทำงานอัตโนมัติ';
       toggleFarmingBtn.classList.add('active');
     } else {
       statusBadge.classList.remove('active');
@@ -111,21 +167,13 @@ document.addEventListener('DOMContentLoaded', () => {
     logsContainer.innerHTML = '';
   });
 
-  // Toggle Farming Loop (ปุ่มเดียวแบบง่าย)
+  // Toggle Farming Loop
   toggleFarmingBtn.addEventListener('click', async () => {
-    const playMacro = playMacroSelect.value;
-    const resetMacro = resetMacroSelect.value;
-
-    if (!playMacro || !resetMacro) {
-      alert('กรุณาเลือกสคริปต์ให้ครบถ้วน');
-      return;
-    }
-
     try {
       const res = await fetch('/api/farming-loop/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playMacro, resetMacro })
+        body: JSON.stringify({ playMacro: selectedPlayMacro, resetMacro: selectedResetMacro })
       });
       const data = await res.json();
       isLoopActive = data.active;
@@ -135,25 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Run Single Macro Immediately
-  runSingleMacroBtn.addEventListener('click', async () => {
-    const macroName = playMacroSelect.value;
-    if (!macroName) return alert('กรุณาเลือกสคริปต์');
-
-    try {
-      const res = await fetch('/api/mumu-macros/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ macroName })
-      });
-      const data = await res.json();
-      if (!res.ok) alert(data.error || 'เกิดข้อผิดพลาด');
-    } catch (e) {
-      alert('ไม่สามารถเริ่มสคริปต์ได้');
-    }
-  });
-
   // Init
-  loadMacros();
+  loadScripts();
   setInterval(pollStatus, 2000);
 });
