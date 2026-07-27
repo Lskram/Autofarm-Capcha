@@ -93,18 +93,28 @@ def play_macro_file(macro_name):
     info = macro_data.get('info', {})
     actions = macro_data.get('actions', [])
     total_time_ms = info.get('total_running_time', 0)
+    total_time_sec = max(0.1, total_time_ms / 1000.0)
     res_x = info.get('resolution_x', 1600)
     res_y = info.get('resolution_y', 900)
 
     print(f"=== [MuMu Precise Engine] Playing Macro: '{macro_filename}' ===")
-    print(f"Actions: {len(actions)}, Duration: {total_time_ms/1000.0:.2f}s, Canvas: {res_x}x{res_y}")
+    print(f"Actions: {len(actions)}, Duration: {total_time_sec:.2f}s, Canvas: {res_x}x{res_y}")
+    print(f"[PROGRESS] 0% (0.0s / {total_time_sec:.1f}s)", flush=True)
 
     pending_presses = {}
+    start_wall_time = time.time()
+    accumulated_ms = 0
 
     for idx, act in enumerate(actions):
         timing = act.get('timing', 0)
         if timing > 0:
             time.sleep(timing / 1000.0)
+            accumulated_ms += timing
+
+        # Emit real-time progress percentage
+        current_elapsed_sec = min(total_time_sec, (time.time() - start_wall_time))
+        percent = int(min(100, (current_elapsed_sec / total_time_sec) * 100))
+        print(f"[PROGRESS] {percent}% ({current_elapsed_sec:.1f}s / {total_time_sec:.1f}s)", flush=True)
 
         act_type = act.get('type', '')
         data_str = act.get('data', '')
@@ -117,7 +127,6 @@ def play_macro_file(macro_name):
                 rx = float(parts[0])
                 ry = float(parts[1])
 
-                # Correct coordinate mapping for MuMu 12 Keymaps (Jump / Slide / Buttons)
                 if extra1 == '11': # Left Button / Jump Key
                     px, py = 170, 780
                 elif extra1 == '12': # Right Button / Slide Key
@@ -147,7 +156,8 @@ def play_macro_file(macro_name):
                         cmd = f"input swipe {px} {py} {px} {py} {swipe_time}"
                         send_mumu_cmd(cmd)
 
-    print(f"=== Macro '{macro_filename}' Replayed 100% Accurately! ===")
+    print(f"[PROGRESS] 100% ({total_time_sec:.1f}s / {total_time_sec:.1f}s)", flush=True)
+    print(f"=== Macro '{macro_filename}' Completed 100%! ===")
 
 def main():
     macro_name = None

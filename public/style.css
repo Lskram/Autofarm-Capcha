@@ -8,6 +8,7 @@
   --blue-button-hover: #2563eb;
   --success-color: #10b981;
   --danger-color: #ef4444;
+  --danger-hover: #dc2626;
   --text-main: #f0f6fc;
   --text-muted: #8b949e;
   --radius-lg: 14px;
@@ -38,7 +39,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding: 14px 24px;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -92,6 +93,74 @@ body {
   background-color: currentColor;
 }
 
+/* Progress Card */
+.progress-card {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.progress-label {
+  color: var(--text-muted);
+}
+
+.progress-name {
+  font-weight: 500;
+  color: #60a5fa;
+}
+
+.progress-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.progress-text-info {
+  font-size: 0.85rem;
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+.progress-bar-container {
+  position: relative;
+  height: 22px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  border-radius: 12px;
+  transition: width 0.3s ease;
+}
+
+.progress-percentage-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
 /* Layout Grid */
 .main-grid {
   display: grid;
@@ -127,7 +196,7 @@ body {
   font-weight: 500;
 }
 
-/* Script List (ถอดแบบจากภาพ Operation Recorder เป๊ะๆ) */
+/* Script List */
 .script-list {
   display: flex;
   flex-direction: column;
@@ -173,7 +242,7 @@ body {
   gap: 12px;
 }
 
-/* Role Selection Badges (Part 1 / Part 3) */
+/* Role Selection Badges */
 .role-select-group {
   display: flex;
   gap: 6px;
@@ -202,7 +271,7 @@ body {
   color: #34d399;
 }
 
-/* Blue Play Square Button (ตรงตามภาพถ่าย Operation Recorder) */
+/* Blue Play Square Button */
 .blue-play-btn {
   width: 44px;
   height: 38px;
@@ -292,6 +361,21 @@ body {
 
 .btn-primary.active {
   background: var(--danger-color);
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--danger-hover);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-outline {

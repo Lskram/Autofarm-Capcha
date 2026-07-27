@@ -36,9 +36,11 @@ for (const p of adbCandidates) {
 let isFarmingLoopActive = false;
 let farmingLoopStep = 'idle'; // 'idle', 'part1_play', 'part2_detect', 'part3_reset'
 let activeFarmingChildProcess = null;
+let activeMacroName = '';
 let selectedPlayMacro = 'oneBox';
 let selectedResetMacro = 'Leavetoloby';
 let farmingLogs = [];
+let macroProgress = { percent: 0, text: '0.0s / 0.0s', activeMacro: '' };
 
 function addFarmingLog(message, type = 'info') {
   const timestamp = new Date().toLocaleTimeString();
@@ -56,7 +58,6 @@ function formatDuration(ms) {
   return remSec > 0 ? `${min} นาที ${remSec} วินาที` : `${min} นาที`;
 }
 
-// Read Detailed Macro Info
 function getDetailedMacros() {
   if (!fs.existsSync(MACRO_DIR)) return [];
   
@@ -90,9 +91,64 @@ function getDetailedMacros() {
     });
   }
 
-  // Sort newest first
   list.sort((a, b) => b.createTime - a.createTime);
   return list;
+}
+
+function spawnMacroProcess(macroName, onFinish) {
+  if (activeFarmingChildProcess) {
+    try { activeFarmingChildProcess.kill(); } catch (e) {}
+    activeFarmingChildProcess = null;
+  }
+
+  activeMacroName = macroName;
+  macroProgress = { percent: 0, text: '0.0s / 0.0s', activeMacro: macroName };
+
+  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(macroName, 'utf8'));
+
+  activeFarmingChildProcess = spawn('python', [
+    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
+    "--from-file"
+  ]);
+
+  activeFarmingChildProcess.stdout.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) {
+      if (text.includes('[PROGRESS]')) {
+        // Parse progress format: [PROGRESS] 45% (13.8s / 30.8s)
+        try {
+          const parts = text.split('[PROGRESS]')[1].trim().split(' ');
+          const pct = parseInt(parts[0].replace('%', '')) || 0;
+          const timeStr = parts.slice(1).join(' ').replace('(', '').replace(')', '');
+          macroProgress = { percent: pct, text: timeStr, activeMacro: activeMacroName };
+        } catch (e) {}
+      } else {
+        addFarmingLog(text, 'muted');
+      }
+    }
+  });
+
+  activeFarmingChildProcess.stderr.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) addFarmingLog(`[Macro Error] ${text}`, 'error');
+  });
+
+  activeFarmingChildProcess.on('close', (code) => {
+    activeFarmingChildProcess = null;
+    activeMacroName = '';
+    macroProgress = { percent: code === 0 ? 100 : 0, text: code === 0 ? 'เสร็จสมบูรณ์' : 'หยุดทำงาน', activeMacro: '' };
+    if (onFinish) onFinish(code);
+  });
+}
+
+function stopCurrentMacro() {
+  if (activeFarmingChildProcess) {
+    try { activeFarmingChildProcess.kill(); } catch (e) {}
+    activeFarmingChildProcess = null;
+  }
+  activeMacroName = '';
+  macroProgress = { percent: 0, text: 'หยุดการทำงานเรียบร้อย', activeMacro: '' };
+  addFarmingLog(`⏹ [Stop Control] สั่งหยุดสคริปต์มาโครทันที!`, 'warn');
 }
 
 // Pipeline: Part 1 -> Part 2 -> Part 3
@@ -106,27 +162,8 @@ function runFarmingLoopStep() {
   farmingLoopStep = 'part1_play';
   addFarmingLog(`🎮 [Part 1 Started] Playing Macro: '${selectedPlayMacro}'...`, 'info');
 
-  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedPlayMacro, 'utf8'));
-  
-  activeFarmingChildProcess = spawn('python', [
-    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
-    "--from-file"
-  ]);
-
-  activeFarmingChildProcess.stdout.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) addFarmingLog(text, 'muted');
-  });
-
-  activeFarmingChildProcess.stderr.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) addFarmingLog(`[Part 1 Error] ${text}`, 'error');
-  });
-
-  activeFarmingChildProcess.on('close', (code) => {
-    activeFarmingChildProcess = null;
+  spawnMacroProcess(selectedPlayMacro, (code) => {
     if (!isFarmingLoopActive) return;
-
     addFarmingLog(`✅ [Part 1 Completed] Play macro finished. Transitioning to Part 2...`, 'success');
     runPart2Detection();
   });
@@ -183,29 +220,9 @@ function runPart3Reset() {
   farmingLoopStep = 'part3_reset';
   addFarmingLog(`🔄 [Part 3 Started] Playing Reset Macro: '${selectedResetMacro}'...`, 'info');
 
-  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedResetMacro, 'utf8'));
-
-  activeFarmingChildProcess = spawn('python', [
-    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
-    "--from-file"
-  ]);
-
-  activeFarmingChildProcess.stdout.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) addFarmingLog(text, 'muted');
-  });
-
-  activeFarmingChildProcess.stderr.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) addFarmingLog(`[Part 3 Error] ${text}`, 'error');
-  });
-
-  activeFarmingChildProcess.on('close', (code) => {
-    activeFarmingChildProcess = null;
+  spawnMacroProcess(selectedResetMacro, (code) => {
     if (!isFarmingLoopActive) return;
-
     addFarmingLog(`✅ [Part 3 Completed] Reset Macro finished. Restarting Farming Loop...`, 'success');
-
     setTimeout(() => {
       if (isFarmingLoopActive) runFarmingLoopStep();
     }, 1500);
@@ -215,10 +232,7 @@ function runPart3Reset() {
 function stopFarmingLoop() {
   isFarmingLoopActive = false;
   farmingLoopStep = 'idle';
-  if (activeFarmingChildProcess) {
-    try { activeFarmingChildProcess.kill(); } catch (e) {}
-    activeFarmingChildProcess = null;
-  }
+  stopCurrentMacro();
   addFarmingLog(`🛑 Farming Loop STOPPED.`, 'warn');
 }
 
@@ -248,36 +262,19 @@ app.post('/api/mumu-macros/run', (req, res) => {
     return res.status(409).json({ error: 'Cannot run manual macro while farming loop is ON' });
   }
 
-  if (activeFarmingChildProcess) {
-    try { activeFarmingChildProcess.kill(); } catch (e) {}
-    activeFarmingChildProcess = null;
-  }
-
   addFarmingLog(`▶️ Executing macro: '${macroName}'...`, 'info');
 
-  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(macroName, 'utf8'));
-
-  activeFarmingChildProcess = spawn('python', [
-    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
-    "--from-file"
-  ]);
-
-  activeFarmingChildProcess.stdout.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) addFarmingLog(text, 'muted');
-  });
-
-  activeFarmingChildProcess.stderr.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) addFarmingLog(`[Macro Error] ${text}`, 'error');
-  });
-
-  activeFarmingChildProcess.on('close', (code) => {
-    activeFarmingChildProcess = null;
+  spawnMacroProcess(macroName, (code) => {
     addFarmingLog(`Macro '${macroName}' finished with exit code ${code}`, code === 0 ? 'success' : 'warn');
   });
 
   res.json({ success: true, message: `Macro '${macroName}' started` });
+});
+
+app.post('/api/mumu-macros/stop', (req, res) => {
+  stopCurrentMacro();
+  if (isFarmingLoopActive) stopFarmingLoop();
+  res.json({ success: true, message: 'Stopped macro successfully' });
 });
 
 app.get('/api/farming-loop', (req, res) => {
@@ -286,6 +283,7 @@ app.get('/api/farming-loop', (req, res) => {
     step: farmingLoopStep,
     playMacro: selectedPlayMacro,
     resetMacro: selectedResetMacro,
+    macroProgress,
     logs: farmingLogs
   });
 });

@@ -27,9 +27,29 @@
       </div>
     </header>
 
+    <!-- Progress & Stop Control Bar -->
+    <section class="card progress-card" id="progressCard">
+      <div class="progress-header">
+        <div class="progress-info">
+          <span class="progress-label">📊 สถานะ Macro ที่กำลังรัน:</span>
+          <span class="progress-name" id="progressMacroName">ไม่มีสคริปต์กำลังรัน</span>
+        </div>
+        <div class="progress-right">
+          <span class="progress-text-info" id="progressTextInfo">0.0s / 0.0s</span>
+          <button id="stopMacroBtn" class="btn btn-danger btn-sm" disabled>
+            ⏹ หยุด Macro (Stop)
+          </button>
+        </div>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+        <span class="progress-percentage-text" id="progressPercentText">0%</span>
+      </div>
+    </section>
+
     <!-- Main Content Layout -->
     <div class="main-grid">
-      <!-- Left Column: Operation Recorder Scripts List (เหมือนในภาพเป๊ะๆ) -->
+      <!-- Left Column: Operation Recorder Scripts List -->
       <section class="card recorder-card">
         <div class="card-header">
           <h2>📋 Operation Recorder Scripts</h2>

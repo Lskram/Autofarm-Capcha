@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const scriptList = document.getElementById('scriptList');
   const toggleFarmingBtn = document.getElementById('toggleFarmingBtn');
+  const stopMacroBtn = document.getElementById('stopMacroBtn');
   const refreshScriptsBtn = document.getElementById('refreshScriptsBtn');
   const refreshStreamBtn = document.getElementById('refreshStreamBtn');
   const clearLogsBtn = document.getElementById('clearLogsBtn');
@@ -8,6 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusBadge = document.getElementById('statusBadge');
   const statusText = document.getElementById('statusText');
   const screenImg = document.getElementById('screenImg');
+
+  const progressMacroName = document.getElementById('progressMacroName');
+  const progressTextInfo = document.getElementById('progressTextInfo');
+  const progressBarFill = document.getElementById('progressBarFill');
+  const progressPercentText = document.getElementById('progressPercentText');
 
   let selectedPlayMacro = 'oneBox';
   let selectedResetMacro = 'Leavetoloby';
@@ -56,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
         scriptList.appendChild(item);
       });
 
-      // Bind Play & Role Events
       bindScriptEvents();
 
     } catch (e) {
@@ -66,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function bindScriptEvents() {
-    // Blue Play Button Event (ตรงตามภาพถ่ายเป๊ะๆ)
+    // Blue Play Button Event
     document.querySelectorAll('.blue-play-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const macroName = btn.dataset.run;
@@ -95,12 +100,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (role === 'play') selectedPlayMacro = name;
         if (role === 'reset') selectedResetMacro = name;
 
-        loadScripts(); // Re-render badges
+        loadScripts();
       });
     });
   }
 
-  // Refresh Screen
+  // Stop Macro Action
+  stopMacroBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/mumu-macros/stop', { method: 'POST' });
+      const data = await res.json();
+      console.log('Macro stopped:', data);
+    } catch (e) {
+      alert('เกิดข้อผิดพลาดในการหยุดสคริปต์');
+    }
+  });
+
+  // Refresh Screen Stream
   function refreshScreen() {
     screenImg.src = '/api/screenshot?t=' + Date.now();
   }
@@ -109,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshScriptsBtn.addEventListener('click', loadScripts);
   setInterval(refreshScreen, 3000);
 
-  // Poll Loop Status & Logs
+  // Poll Loop Status, Logs & Real-time Progress
   async function pollStatus() {
     try {
       const res = await fetch('/api/farming-loop');
@@ -120,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.resetMacro) selectedResetMacro = data.resetMacro;
 
       updateUIStatus(data.active, data.step);
+      updateProgress(data.macroProgress);
       updateLogs(data.logs || []);
 
     } catch (e) {
@@ -149,6 +166,30 @@ document.addEventListener('DOMContentLoaded', () => {
       statusText.textContent = 'พร้อมใช้งาน';
       btnText.textContent = 'เริ่มทำงานอัตโนมัติ (Start Loop)';
       toggleFarmingBtn.classList.remove('active');
+    }
+  }
+
+  function updateProgress(prog) {
+    if (!prog) return;
+
+    const percent = prog.percent || 0;
+    const activeMacro = prog.activeMacro || '';
+    const textInfo = prog.text || '0.0s / 0.0s';
+
+    progressBarFill.style.width = `${percent}%`;
+    progressPercentText.textContent = `${percent}%`;
+    progressTextInfo.textContent = textInfo;
+
+    if (activeMacro) {
+      progressMacroName.textContent = `กำลังเล่นสคริปต์ '${activeMacro}'`;
+      stopMacroBtn.disabled = false;
+    } else {
+      if (percent === 100) {
+        progressMacroName.textContent = 'สคริปต์เล่นเสร็จสมบูรณ์ 100%';
+      } else {
+        progressMacroName.textContent = 'ไม่มีสคริปต์กำลังรัน';
+      }
+      stopMacroBtn.disabled = true;
     }
   }
 
@@ -185,5 +226,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Init
   loadScripts();
-  setInterval(pollStatus, 2000);
+  setInterval(pollStatus, 500); // Poll status & progress every 500ms for smooth progress bar
 });
