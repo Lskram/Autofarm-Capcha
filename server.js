@@ -1,10 +1,8 @@
 import express from 'express';
-import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { exec, spawn } from 'child_process';
-import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,7 +10,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -37,13 +34,11 @@ for (const p of adbCandidates) {
 }
 
 let isFarmingLoopActive = false;
-let farmingLoopStep = 'idle';
+let farmingLoopStep = 'idle'; // 'idle', 'part1_play', 'part2_detect', 'part3_reset'
 let activeFarmingChildProcess = null;
-let activeMacroName = '';
 let selectedPlayMacro = 'oneBox';
 let selectedResetMacro = 'Leavetoloby';
 let farmingLogs = [];
-let macroProgress = { percent: 0, text: '0.0s / 0.0s', activeMacro: '' };
 
 function addFarmingLog(message, type = 'info') {
   const timestamp = new Date().toLocaleTimeString();
@@ -61,6 +56,7 @@ function formatDuration(ms) {
   return remSec > 0 ? `${min} นาที ${remSec} วินาที` : `${min} นาที`;
 }
 
+// Read Detailed Macro Info
 function getDetailedMacros() {
   if (!fs.existsSync(MACRO_DIR)) return [];
   
@@ -94,63 +90,9 @@ function getDetailedMacros() {
     });
   }
 
+  // Sort newest first
   list.sort((a, b) => b.createTime - a.createTime);
   return list;
-}
-
-function spawnMacroProcess(macroName, onFinish) {
-  if (activeFarmingChildProcess) {
-    try { activeFarmingChildProcess.kill(); } catch (e) {}
-    activeFarmingChildProcess = null;
-  }
-
-  activeMacroName = macroName;
-  macroProgress = { percent: 0, text: '0.0s / 0.0s', activeMacro: macroName };
-
-  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(macroName, 'utf8'));
-
-  activeFarmingChildProcess = spawn('python', [
-    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
-    "--from-file"
-  ]);
-
-  activeFarmingChildProcess.stdout.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) {
-      if (text.includes('[PROGRESS]')) {
-        try {
-          const parts = text.split('[PROGRESS]')[1].trim().split(' ');
-          const pct = parseInt(parts[0].replace('%', '')) || 0;
-          const timeStr = parts.slice(1).join(' ').replace('(', '').replace(')', '');
-          macroProgress = { percent: pct, text: timeStr, activeMacro: activeMacroName };
-        } catch (e) {}
-      } else {
-        addFarmingLog(text, 'muted');
-      }
-    }
-  });
-
-  activeFarmingChildProcess.stderr.on('data', (data) => {
-    const text = data.toString().trim();
-    if (text) addFarmingLog(`[Macro Error] ${text}`, 'error');
-  });
-
-  activeFarmingChildProcess.on('close', (code) => {
-    activeFarmingChildProcess = null;
-    activeMacroName = '';
-    macroProgress = { percent: code === 0 ? 100 : 0, text: code === 0 ? 'เสร็จสมบูรณ์' : 'หยุดทำงาน', activeMacro: '' };
-    if (onFinish) onFinish(code);
-  });
-}
-
-function stopCurrentMacro() {
-  if (activeFarmingChildProcess) {
-    try { activeFarmingChildProcess.kill(); } catch (e) {}
-    activeFarmingChildProcess = null;
-  }
-  activeMacroName = '';
-  macroProgress = { percent: 0, text: 'หยุดการทำงานเรียบร้อย', activeMacro: '' };
-  addFarmingLog(`⏹ [Stop Control] สั่งหยุดสคริปต์มาโครทันที!`, 'warn');
 }
 
 // Pipeline: Part 1 -> Part 2 -> Part 3
@@ -160,11 +102,31 @@ function runFarmingLoopStep() {
     return;
   }
 
+  // --- PART 1 ---
   farmingLoopStep = 'part1_play';
   addFarmingLog(`🎮 [Part 1 Started] Playing Macro: '${selectedPlayMacro}'...`, 'info');
 
-  spawnMacroProcess(selectedPlayMacro, (code) => {
+  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedPlayMacro, 'utf8'));
+  
+  activeFarmingChildProcess = spawn('python', [
+    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
+    "--from-file"
+  ]);
+
+  activeFarmingChildProcess.stdout.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) addFarmingLog(text, 'muted');
+  });
+
+  activeFarmingChildProcess.stderr.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) addFarmingLog(`[Part 1 Error] ${text}`, 'error');
+  });
+
+  activeFarmingChildProcess.on('close', (code) => {
+    activeFarmingChildProcess = null;
     if (!isFarmingLoopActive) return;
+
     addFarmingLog(`✅ [Part 1 Completed] Play macro finished. Transitioning to Part 2...`, 'success');
     runPart2Detection();
   });
@@ -221,9 +183,29 @@ function runPart3Reset() {
   farmingLoopStep = 'part3_reset';
   addFarmingLog(`🔄 [Part 3 Started] Playing Reset Macro: '${selectedResetMacro}'...`, 'info');
 
-  spawnMacroProcess(selectedResetMacro, (code) => {
+  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(selectedResetMacro, 'utf8'));
+
+  activeFarmingChildProcess = spawn('python', [
+    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
+    "--from-file"
+  ]);
+
+  activeFarmingChildProcess.stdout.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) addFarmingLog(text, 'muted');
+  });
+
+  activeFarmingChildProcess.stderr.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) addFarmingLog(`[Part 3 Error] ${text}`, 'error');
+  });
+
+  activeFarmingChildProcess.on('close', (code) => {
+    activeFarmingChildProcess = null;
     if (!isFarmingLoopActive) return;
+
     addFarmingLog(`✅ [Part 3 Completed] Reset Macro finished. Restarting Farming Loop...`, 'success');
+
     setTimeout(() => {
       if (isFarmingLoopActive) runFarmingLoopStep();
     }, 1500);
@@ -233,7 +215,10 @@ function runPart3Reset() {
 function stopFarmingLoop() {
   isFarmingLoopActive = false;
   farmingLoopStep = 'idle';
-  stopCurrentMacro();
+  if (activeFarmingChildProcess) {
+    try { activeFarmingChildProcess.kill(); } catch (e) {}
+    activeFarmingChildProcess = null;
+  }
   addFarmingLog(`🛑 Farming Loop STOPPED.`, 'warn');
 }
 
@@ -263,19 +248,36 @@ app.post('/api/mumu-macros/run', (req, res) => {
     return res.status(409).json({ error: 'Cannot run manual macro while farming loop is ON' });
   }
 
+  if (activeFarmingChildProcess) {
+    try { activeFarmingChildProcess.kill(); } catch (e) {}
+    activeFarmingChildProcess = null;
+  }
+
   addFarmingLog(`▶️ Executing macro: '${macroName}'...`, 'info');
 
-  spawnMacroProcess(macroName, (code) => {
+  fs.writeFileSync('C:/Users/UsEr/.gemini/antigravity/scratch/current_macro.txt', Buffer.from(macroName, 'utf8'));
+
+  activeFarmingChildProcess = spawn('python', [
+    "C:/Users/UsEr/.gemini/antigravity/scratch/play_mumu_macro_gui.py",
+    "--from-file"
+  ]);
+
+  activeFarmingChildProcess.stdout.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) addFarmingLog(text, 'muted');
+  });
+
+  activeFarmingChildProcess.stderr.on('data', (data) => {
+    const text = data.toString().trim();
+    if (text) addFarmingLog(`[Macro Error] ${text}`, 'error');
+  });
+
+  activeFarmingChildProcess.on('close', (code) => {
+    activeFarmingChildProcess = null;
     addFarmingLog(`Macro '${macroName}' finished with exit code ${code}`, code === 0 ? 'success' : 'warn');
   });
 
   res.json({ success: true, message: `Macro '${macroName}' started` });
-});
-
-app.post('/api/mumu-macros/stop', (req, res) => {
-  stopCurrentMacro();
-  if (isFarmingLoopActive) stopFarmingLoop();
-  res.json({ success: true, message: 'Stopped macro successfully' });
 });
 
 app.get('/api/farming-loop', (req, res) => {
@@ -284,7 +286,6 @@ app.get('/api/farming-loop', (req, res) => {
     step: farmingLoopStep,
     playMacro: selectedPlayMacro,
     resetMacro: selectedResetMacro,
-    macroProgress,
     logs: farmingLogs
   });
 });
@@ -312,25 +313,9 @@ app.post('/api/farming-loop/toggle', (req, res) => {
   });
 });
 
-// Helper to get local IP address
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return '127.0.0.1';
-}
-
-app.listen(PORT, '0.0.0.0', () => {
-  const localIP = getLocalIP();
-  console.log(`=======================================================`);
+app.listen(PORT, () => {
+  console.log(`=========================================`);
   console.log(` MuMu Farming Controller Server Active! `);
-  console.log(` Local Windows URL : http://localhost:${PORT} `);
-  console.log(` MuMu Android URL  : http://10.0.2.2:${PORT} `);
-  console.log(` LAN Network URL   : http://${localIP}:${PORT} `);
-  console.log(`=======================================================`);
+  console.log(` Local URL: http://localhost:${PORT} `);
+  console.log(`=========================================`);
 });
