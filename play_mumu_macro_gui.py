@@ -5,10 +5,6 @@ import json
 import ctypes
 import ctypes.wintypes
 import subprocess
-import cv2
-import numpy as np
-from PIL import ImageGrab
-import pyautogui
 
 SCRATCH_DIR = r"C:\Users\UsEr\.gemini\antigravity\scratch"
 MACRO_DIR = r"C:\Users\UsEr\AppData\Roaming\Netease\MuMuPlayerGlobal\data\gameScript"
@@ -17,30 +13,12 @@ ADB_PATH = r"D:\Program Files\Netease\MuMuPlayer\nx_main\adb.exe"
 PORT = "127.0.0.1:16384"
 
 user32 = ctypes.windll.user32
-kernel32 = ctypes.windll.kernel32
 SW_RESTORE = 9
 HWND_TOP = 0
 SWP_SHOWWINDOW = 0x0040
 
-def force_foreground(hwnd):
-    """Force window to top foreground regardless of Windows 11 focus lock."""
-    try:
-        fore_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
-        app_thread = kernel32.GetCurrentThreadId()
-        if fore_thread != app_thread:
-            user32.AttachThreadInput(fore_thread, app_thread, True)
-            user32.ShowWindow(hwnd, SW_RESTORE)
-            user32.SetForegroundWindow(hwnd)
-            user32.BringWindowToTop(hwnd)
-            user32.AttachThreadInput(fore_thread, app_thread, False)
-        else:
-            user32.ShowWindow(hwnd, SW_RESTORE)
-            user32.SetForegroundWindow(hwnd)
-    except Exception:
-        pass
-
-def get_mumu_window_rect():
-    """Dynamically find MuMu Player window and calculate exact live desktop coordinates & scale."""
+def bring_mumu_to_front():
+    """Bring MuMu Player window to absolute top foreground cleanly."""
     found = []
     def enum_cb(hwnd, lParam):
         if user32.IsWindowVisible(hwnd):
@@ -62,8 +40,13 @@ def get_mumu_window_rect():
     user32.EnumWindows(WNDENUMPROC(enum_cb), 0)
 
     if found:
-        return found[0]
-    return None
+        hwnd, l, t, w, h, title = found[0]
+        user32.ShowWindow(hwnd, SW_RESTORE)
+        user32.SetWindowPos(hwnd, HWND_TOP, 100, 100, 1280, 760, SWP_SHOWWINDOW)
+        user32.SetForegroundWindow(hwnd)
+        time.sleep(0.2)
+        return True
+    return False
 
 def send_mumu_cmd(cmd_str):
     try:
@@ -83,112 +66,11 @@ def send_mumu_cmd(cmd_str):
 def clear_stray_popups():
     """Auto clear stray modals to ensure clean Lobby state."""
     send_mumu_cmd("input tap 1365 145")  # Friend Info X
-    time.sleep(0.15)
+    time.sleep(0.12)
     send_mumu_cmd("input tap 878 100")   # News X
-    time.sleep(0.15)
+    time.sleep(0.12)
     send_mumu_cmd("input tap 600 636")   # Exit dialog cancel
-    time.sleep(0.15)
-
-def get_ordered_macro_names():
-    """Get sorted macro list by creation time (matching Operation Recorder GUI order)."""
-    if not os.path.exists(MACRO_DIR):
-        return []
-    
-    files = [f for f in os.listdir(MACRO_DIR) if f.endswith('.mmor')]
-    macros = []
-    for f in files:
-        filePath = os.path.join(MACRO_DIR, f)
-        cleanName = f.replace('.mmor', '')
-        createTime = 0
-        try:
-            with open(filePath, 'r', encoding='utf-8') as jf:
-                data = json.load(jf)
-                createTime = data.get('info', {}).get('create_time', 0)
-        except Exception:
-            pass
-        macros.append({'name': cleanName, 'createTime': createTime})
-    
-    macros.sort(key=lambda x: x['createTime'], reverse=True)
-    return [m['name'] for m in macros]
-
-def trigger_native_gui_play(macro_name):
-    """
-    100% Dynamic Native GUI Trigger:
-    1. Focuses MuMu Player window dynamically
-    2. Opens 3-dots menu -> Operation Recorder
-    3. Finds target macro row & clicks Blue Play button dynamically based on live window size & position
-    """
-    win_info = get_mumu_window_rect()
-    if not win_info:
-        print("Warning: MuMu Player window not found. Falling back to native driver execution.")
-        return False
-
-    hwnd, l, t, w, h, title = win_info
-    print(f"  [Dynamic GUI] Found MuMu Window at ({l}, {t}, {w}x{h})")
-    force_foreground(hwnd)
-    time.sleep(0.3)
-
-    # 1. Click 3-dots menu / Operation Recorder icon on right toolbar
-    # Calculate dynamic relative position for toolbar
-    toolbar_x = l + w - int(25 * (w / 1280.0))
-    three_dots_y = t + int(240 * (h / 760.0))
-    recorder_icon_y = t + int(360 * (h / 760.0))
-
-    print(f"  [Dynamic GUI] Opening Operation Recorder menu at ({toolbar_x}, {three_dots_y})...")
-    pyautogui.click(toolbar_x, three_dots_y)
-    time.sleep(0.5)
-
-    # Send Alt+8 shortcut to toggle Operation Recorder GUI directly inside MuMu
-    pyautogui.hotkey('alt', '8')
-    time.sleep(1.0)
-
-    # 2. Find Blue Play buttons dynamically using OpenCV color detection on live screen crop
-    crop_l = max(0, l)
-    crop_t = max(0, t)
-    crop_r = l + w
-    crop_b = t + h
-
-    screen_img = ImageGrab.grab(bbox=(crop_l, crop_t, crop_r, crop_b))
-    img_np = np.array(screen_img)
-    img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-
-    # HSV color threshold for MuMu Blue Play Arrow (▶)
-    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-    lower_blue = np.array([95, 140, 140])
-    upper_blue = np.array([125, 255, 255])
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)
-
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    blue_buttons = []
-    for cnt in contours:
-        x, y, bw, bh = cv2.boundingRect(cnt)
-        if bw >= 12 and bh >= 12 and bw <= 90 and bh <= 90:
-            center_x = crop_l + x + bw // 2
-            center_y = crop_t + y + bh // 2
-            blue_buttons.append((center_y, center_x))
-
-    blue_buttons.sort(key=lambda item: item[0])
-    print(f"  [Dynamic GUI] Detected {len(blue_buttons)} Blue Play buttons on live screen.")
-
-    # Match macro index in Operation Recorder ordered list
-    macro_order = get_ordered_macro_names()
-    target_row_idx = 0
-    if macro_name in macro_order:
-        target_row_idx = macro_order.index(macro_name)
-
-    if blue_buttons and target_row_idx < len(blue_buttons):
-        target_cy, target_cx = blue_buttons[target_row_idx]
-        print(f"  [Dynamic GUI] Clicking Blue Play button for '{macro_name}' (Row {target_row_idx}) at screen ({target_cx}, {target_cy})...")
-        pyautogui.click(target_cx, target_cy)
-        print(f"  [Dynamic GUI] Native GUI Play Trigger Sent Successfully for '{macro_name}'!")
-        return True
-    elif blue_buttons:
-        target_cy, target_cx = blue_buttons[0]
-        print(f"  [Dynamic GUI] Row index out of bounds. Clicking Row 0 Blue Play button at screen ({target_cx}, {target_cy})...")
-        pyautogui.click(target_cx, target_cy)
-        return True
-
-    return False
+    time.sleep(0.12)
 
 def play_macro_file(macro_name):
     if not macro_name.endswith('.mmor'):
@@ -212,35 +94,70 @@ def play_macro_file(macro_name):
         sys.exit(1)
 
     info = macro_data.get('info', {})
+    actions = macro_data.get('actions', [])
     total_time_ms = info.get('total_running_time', 0)
     total_time_sec = max(0.1, total_time_ms / 1000.0)
+    res_x = info.get('resolution_x', 1600)
+    res_y = info.get('resolution_y', 900)
 
-    print(f"=== [MuMu 100% Dynamic Engine] Executing Macro: '{macro_filename}' ===")
-    print(f"Duration: {total_time_sec:.2f}s")
+    print(f"=== [MuMu Core Engine] Executing Macro: '{macro_filename}' ===")
+    print(f"Actions: {len(actions)}, Duration: {total_time_sec:.2f}s, Canvas: {res_x}x{res_y}")
     print(f"[PROGRESS] 0% (0.0s / {total_time_sec:.1f}s)", flush=True)
 
-    # 1. Try Native GUI Play trigger first
-    gui_triggered = trigger_native_gui_play(macro_name.replace('.mmor', ''))
-
-    # 2. Real-time Progress Tracking during Macro Execution
+    pending_presses = {}
     start_wall_time = time.time()
-    while True:
-        elapsed_sec = time.time() - start_wall_time
-        if elapsed_sec >= total_time_sec:
-            break
-        percent = int(min(99, (elapsed_sec / total_time_sec) * 100))
-        print(f"[PROGRESS] {percent}% ({elapsed_sec:.1f}s / {total_time_sec:.1f}s)", flush=True)
-        time.sleep(0.5)
+
+    for idx, act in enumerate(actions):
+        timing = act.get('timing', 0)
+        if timing > 0:
+            time.sleep(timing / 1000.0)
+
+        current_elapsed_sec = min(total_time_sec, (time.time() - start_wall_time))
+        percent = int(min(99, (current_elapsed_sec / total_time_sec) * 100))
+        print(f"[PROGRESS] {percent}% ({current_elapsed_sec:.1f}s / {total_time_sec:.1f}s)", flush=True)
+
+        act_type = act.get('type', '')
+        data_str = act.get('data', '')
+        extra1 = act.get('extra1', '')
+
+        if act_type == 'touch':
+            if 'press_rel:' in data_str:
+                coords_part = data_str.split('press_rel:(')[1].rstrip(')')
+                parts = coords_part.split(',')
+                rx = float(parts[0])
+                ry = float(parts[1])
+
+                if extra1 == '11': # Left Button / Jump Key
+                    px, py = 170, 780
+                elif extra1 == '12': # Right Button / Slide Key
+                    px, py = 1430, 780
+                else:
+                    rx_norm = rx - int(rx) if rx > 1.0 else rx
+                    ry_norm = ry - int(ry) if ry > 1.0 else ry
+
+                    px = int(rx_norm * res_x)
+                    py = int(ry_norm * res_y)
+
+                    px = max(0, min(res_x - 1, px))
+                    py = max(0, min(res_y - 1, py))
+
+                pending_presses[extra1] = (px, py, time.time())
+
+            elif data_str == 'release':
+                if extra1 in pending_presses:
+                    px, py, ptime = pending_presses.pop(extra1)
+                    hold_duration = int((time.time() - ptime) * 1000)
+
+                    if hold_duration < 80:
+                        cmd = f"input tap {px} {py}"
+                        send_mumu_cmd(cmd)
+                    else:
+                        swipe_time = max(hold_duration, 100)
+                        cmd = f"input swipe {px} {py} {px} {py} {swipe_time}"
+                        send_mumu_cmd(cmd)
 
     print(f"[PROGRESS] 100% ({total_time_sec:.1f}s / {total_time_sec:.1f}s)", flush=True)
     print(f"=== Macro '{macro_filename}' Completed 100%! ===")
-
-def bring_mumu_to_front():
-    win_info = get_mumu_window_rect()
-    if win_info:
-        hwnd, l, t, w, h, title = win_info
-        force_foreground(hwnd)
-        time.sleep(0.2)
 
 def main():
     macro_name = None
