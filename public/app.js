@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let isSolverActive = false;
 
+  // Refresh Screen Stream - Locked at 0.3 Seconds (300ms)
   function refreshScreen() {
     if (screenImg) {
       screenImg.src = '/api/screenshot?t=' + Date.now();
@@ -17,7 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (refreshStreamBtn) refreshStreamBtn.addEventListener('click', refreshScreen);
-  setInterval(refreshScreen, 3000);
+  
+  // Locked refresh rate at exactly 0.3s (300ms)
+  setInterval(refreshScreen, 300);
 
   async function pollStatus() {
     try {
@@ -95,5 +98,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  setInterval(pollStatus, 800);
+  setInterval(pollStatus, 500);
 });
