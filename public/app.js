@@ -21,8 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load Detailed Script List from Operation Recorder
   async function loadScripts() {
+    if (!scriptList) return;
+    scriptList.innerHTML = '<div class="loading-text">กำลังโหลดรายการสคริปต์...</div>';
+
     try {
       const res = await fetch('/api/mumu-macros');
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const macros = await res.json();
 
       scriptList.innerHTML = '';
@@ -66,12 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (e) {
       console.error('Failed to load scripts:', e);
-      scriptList.innerHTML = '<div class="loading-text">เกิดข้อผิดพลาดในการโหลดรายการสคริปต์</div>';
+      scriptList.innerHTML = `
+        <div class="loading-text error-text">
+          เกิดข้อผิดพลาดในการโหลดรายการสคริปต์ (${e.message})
+          <br><button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="location.reload()">🔄 กดเพื่อโหลดใหม่</button>
+        </div>
+      `;
     }
   }
 
   function bindScriptEvents() {
-    // Blue Play Button Event
     document.querySelectorAll('.blue-play-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const macroName = btn.dataset.run;
@@ -91,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Role Selection Buttons (Part 1 / Part 3)
     document.querySelectorAll('.role-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const role = btn.dataset.role;
@@ -106,23 +113,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Stop Macro Action
-  stopMacroBtn.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/mumu-macros/stop', { method: 'POST' });
-      const data = await res.json();
-      console.log('Macro stopped:', data);
-    } catch (e) {
-      alert('เกิดข้อผิดพลาดในการหยุดสคริปต์');
-    }
-  });
-
-  // Refresh Screen Stream
-  function refreshScreen() {
-    screenImg.src = '/api/screenshot?t=' + Date.now();
+  if (stopMacroBtn) {
+    stopMacroBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/mumu-macros/stop', { method: 'POST' });
+        const data = await res.json();
+        console.log('Macro stopped:', data);
+      } catch (e) {
+        alert('เกิดข้อผิดพลาดในการหยุดสคริปต์');
+      }
+    });
   }
 
-  refreshStreamBtn.addEventListener('click', refreshScreen);
-  refreshScriptsBtn.addEventListener('click', loadScripts);
+  // Refresh Screen Stream safely
+  function refreshScreen() {
+    if (screenImg) {
+      screenImg.src = '/api/screenshot?t=' + Date.now();
+    }
+  }
+
+  if (refreshStreamBtn) refreshStreamBtn.addEventListener('click', refreshScreen);
+  if (refreshScriptsBtn) refreshScriptsBtn.addEventListener('click', loadScripts);
+
   setInterval(refreshScreen, 3000);
 
   // Poll Loop Status, Logs & Real-time Progress
@@ -145,26 +157,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateUIStatus(active, step) {
+    if (!toggleFarmingBtn) return;
     const btnText = toggleFarmingBtn.querySelector('.btn-text');
     const btnIcon = toggleFarmingBtn.querySelector('.btn-icon');
 
     if (active) {
-      statusBadge.classList.add('active');
-      btnIcon.textContent = '⏹';
+      if (statusBadge) statusBadge.classList.add('active');
+      if (btnIcon) btnIcon.textContent = '⏹';
 
       let stepLabel = 'กำลังทำงานอัตโนมัติ';
       if (step === 'part1_play') stepLabel = 'Part 1: เล่นสคริปต์ด่าน';
       else if (step === 'part2_detect') stepLabel = 'Part 2: ตรวจจับ & CAPTCHA';
       else if (step === 'part3_reset') stepLabel = 'Part 3: กลับ Lobby';
 
-      statusText.textContent = stepLabel;
-      btnText.textContent = 'หยุดทำงานอัตโนมัติ';
+      if (statusText) statusText.textContent = stepLabel;
+      if (btnText) btnText.textContent = 'หยุดทำงานอัตโนมัติ';
       toggleFarmingBtn.classList.add('active');
     } else {
-      statusBadge.classList.remove('active');
-      btnIcon.textContent = '▶';
-      statusText.textContent = 'พร้อมใช้งาน';
-      btnText.textContent = 'เริ่มทำงานอัตโนมัติ (Start Loop)';
+      if (statusBadge) statusBadge.classList.remove('active');
+      if (btnIcon) btnIcon.textContent = '▶';
+      if (statusText) statusText.textContent = 'พร้อมใช้งาน';
+      if (btnText) btnText.textContent = 'เริ่มทำงานอัตโนมัติ (Start Loop)';
       toggleFarmingBtn.classList.remove('active');
     }
   }
@@ -176,24 +189,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeMacro = prog.activeMacro || '';
     const textInfo = prog.text || '0.0s / 0.0s';
 
-    progressBarFill.style.width = `${percent}%`;
-    progressPercentText.textContent = `${percent}%`;
-    progressTextInfo.textContent = textInfo;
+    if (progressBarFill) progressBarFill.style.width = `${percent}%`;
+    if (progressPercentText) progressPercentText.textContent = `${percent}%`;
+    if (progressTextInfo) progressTextInfo.textContent = textInfo;
 
-    if (activeMacro) {
-      progressMacroName.textContent = `กำลังเล่นสคริปต์ '${activeMacro}'`;
-      stopMacroBtn.disabled = false;
-    } else {
-      if (percent === 100) {
-        progressMacroName.textContent = 'สคริปต์เล่นเสร็จสมบูรณ์ 100%';
+    if (progressMacroName) {
+      if (activeMacro) {
+        progressMacroName.textContent = `กำลังเล่นสคริปต์ '${activeMacro}'`;
+        if (stopMacroBtn) stopMacroBtn.disabled = false;
       } else {
-        progressMacroName.textContent = 'ไม่มีสคริปต์กำลังรัน';
+        if (percent === 100) {
+          progressMacroName.textContent = 'สคริปต์เล่นเสร็จสมบูรณ์ 100%';
+        } else {
+          progressMacroName.textContent = 'ไม่มีสคริปต์กำลังรัน';
+        }
+        if (stopMacroBtn) stopMacroBtn.disabled = true;
       }
-      stopMacroBtn.disabled = true;
     }
   }
 
   function updateLogs(logs) {
+    if (!logsContainer) return;
     logsContainer.innerHTML = '';
     logs.forEach((log) => {
       const div = document.createElement('div');
@@ -204,27 +220,31 @@ document.addEventListener('DOMContentLoaded', () => {
     logsContainer.scrollTop = logsContainer.scrollHeight;
   }
 
-  clearLogsBtn.addEventListener('click', () => {
-    logsContainer.innerHTML = '';
-  });
+  if (clearLogsBtn) {
+    clearLogsBtn.addEventListener('click', () => {
+      if (logsContainer) logsContainer.innerHTML = '';
+    });
+  }
 
   // Toggle Farming Loop
-  toggleFarmingBtn.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/farming-loop/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playMacro: selectedPlayMacro, resetMacro: selectedResetMacro })
-      });
-      const data = await res.json();
-      isLoopActive = data.active;
-      updateUIStatus(data.active, data.step);
-    } catch (e) {
-      alert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ');
-    }
-  });
+  if (toggleFarmingBtn) {
+    toggleFarmingBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/farming-loop/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playMacro: selectedPlayMacro, resetMacro: selectedResetMacro })
+        });
+        const data = await res.json();
+        isLoopActive = data.active;
+        updateUIStatus(data.active, data.step);
+      } catch (e) {
+        alert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ');
+      }
+    });
+  }
 
   // Init
   loadScripts();
-  setInterval(pollStatus, 500); // Poll status & progress every 500ms for smooth progress bar
+  setInterval(pollStatus, 500);
 });
