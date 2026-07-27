@@ -2,42 +2,38 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Operation Recorder Web Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MuMu Companion Controller</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="companion-mode">
   <div class="app-container">
-    <!-- Header -->
+    <!-- Compact Header for Companion Inside MuMu -->
     <header class="app-header">
       <div class="logo-area">
-        <span class="logo-icon">📱</span>
-        <h1>Operation Recorder Controller</h1>
+        <span class="logo-icon">🎮</span>
+        <h1>MuMu Companion</h1>
       </div>
       <div class="header-actions">
         <div class="status-badge" id="statusBadge">
           <span class="status-dot"></span>
           <span id="statusText">พร้อมใช้งาน</span>
         </div>
-        <button id="toggleFarmingBtn" class="btn btn-primary">
-          <span class="btn-icon">▶</span>
-          <span class="btn-text">เริ่มทำงานอัตโนมัติ (Start Loop)</span>
-        </button>
       </div>
     </header>
 
-    <!-- Progress & Stop Control Bar -->
+    <!-- Real-time Macro Progress Bar -->
     <section class="card progress-card" id="progressCard">
       <div class="progress-header">
         <div class="progress-info">
-          <span class="progress-label">📊 สถานะ Macro ที่กำลังรัน:</span>
-          <span class="progress-name" id="progressMacroName">ไม่มีสคริปต์กำลังรัน</span>
+          <span class="progress-label">📊 สถานะ:</span>
+          <span class="progress-name" id="progressMacroName">ไม่มีสคริปต์รันอยู่</span>
         </div>
         <div class="progress-right">
           <span class="progress-text-info" id="progressTextInfo">0.0s / 0.0s</span>
           <button id="stopMacroBtn" class="btn btn-danger btn-sm" disabled>
-            ⏹ หยุด Macro (Stop)
+            ⏹ หยุด Macro
           </button>
         </div>
       </div>
@@ -47,42 +43,39 @@
       </div>
     </section>
 
-    <!-- Main Content Layout -->
-    <div class="main-grid">
-      <!-- Left Column: Operation Recorder Scripts List -->
+    <!-- Companion Main Grid -->
+    <div class="companion-grid">
+      <!-- Left Box: Operation Recorder Script Rows with Native Blue Buttons -->
       <section class="card recorder-card">
         <div class="card-header">
-          <h2>📋 Operation Recorder Scripts</h2>
-          <button class="btn btn-sm btn-outline" id="refreshScriptsBtn">🔄 รีเฟรชรายการ</button>
+          <h2>📋 รายการสคริปต์ (Operation Recorder)</h2>
+          <button class="btn btn-sm btn-outline" id="refreshScriptsBtn">🔄 รีเฟรช</button>
         </div>
         
-        <!-- List Container -->
         <div class="script-list" id="scriptList">
           <div class="loading-text">กำลังโหลดรายการสคริปต์...</div>
         </div>
       </section>
 
-      <!-- Right Column: Live View & System Logs -->
-      <section class="right-column">
-        <!-- Live Stream Card -->
-        <div class="card live-card">
+      <!-- Right Box: Auto Loop Control & System Logs -->
+      <section class="companion-side-panel">
+        <div class="card loop-control-card">
           <div class="card-header">
-            <h2>📺 จอแสดงผล MuMu</h2>
-            <button class="btn btn-sm btn-outline" id="refreshStreamBtn">🔄 รีเฟรช</button>
+            <h2>🚀 ควบคุมลูปอัตโนมัติ (Single-Click)</h2>
           </div>
-          <div class="stream-wrapper">
-            <img id="screenImg" src="/api/screenshot" alt="MuMu Live Screen" loading="eager">
-          </div>
+          <button id="toggleFarmingBtn" class="btn btn-primary btn-large w-full">
+            <span class="btn-icon">▶</span>
+            <span class="btn-text">เริ่มทำงานอัตโนมัติ (Start Loop)</span>
+          </button>
         </div>
 
-        <!-- Logs Card -->
         <div class="card logs-card">
           <div class="card-header">
-            <h2>📜 บันทึกสถานะ (System Logs)</h2>
+            <h2>📜 บันทึกสถานะ (Logs)</h2>
             <button class="btn btn-sm btn-outline" id="clearLogsBtn">🗑️ เคลียร์</button>
           </div>
           <div class="logs-container" id="logsContainer">
-            <div class="log-entry muted">[System] ระบบพร้อมใช้งานแล้ว</div>
+            <div class="log-entry muted">[Companion] ระบบทำงานคู่ข้างใน MuMu พร้อมใช้งานแล้ว</div>
           </div>
         </div>
       </section>

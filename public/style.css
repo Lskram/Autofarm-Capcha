@@ -1,6 +1,6 @@
 :root {
   --bg-color: #0d1117;
-  --card-bg: rgba(22, 27, 34, 0.85);
+  --card-bg: rgba(22, 27, 34, 0.9);
   --card-border: rgba(255, 255, 255, 0.1);
   --primary-blue: #2563eb;
   --primary-hover: #1d4ed8;
@@ -11,7 +11,7 @@
   --danger-hover: #dc2626;
   --text-main: #f0f6fc;
   --text-muted: #8b949e;
-  --radius-lg: 14px;
+  --radius-lg: 12px;
   --radius-md: 8px;
 }
 
@@ -26,11 +26,11 @@ body {
   background-color: var(--bg-color);
   color: var(--text-main);
   min-height: 100vh;
-  padding: 20px;
+  padding: 12px;
 }
 
 .app-container {
-  max-width: 1200px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
@@ -39,8 +39,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding: 14px 24px;
+  margin-bottom: 12px;
+  padding: 10px 18px;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
@@ -49,34 +49,28 @@ body {
 .logo-area {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .logo-icon {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
 }
 
 .logo-area h1 {
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   font-weight: 500;
   color: var(--text-main);
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
 }
 
 .status-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
+  gap: 6px;
+  padding: 4px 12px;
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: 20px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--success-color);
 }
 
@@ -87,30 +81,30 @@ body {
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background-color: currentColor;
 }
 
 /* Progress Card */
 .progress-card {
-  margin-bottom: 20px;
-  padding: 16px 20px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
 }
 
 .progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .progress-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.95rem;
+  gap: 8px;
+  font-size: 0.85rem;
 }
 
 .progress-label {
@@ -125,20 +119,20 @@ body {
 .progress-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .progress-text-info {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-family: monospace;
   color: var(--text-muted);
 }
 
 .progress-bar-container {
   position: relative;
-  height: 22px;
+  height: 18px;
   background: rgba(15, 23, 42, 0.9);
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--card-border);
 }
@@ -146,7 +140,7 @@ body {
 .progress-bar-fill {
   height: 100%;
   background: linear-gradient(90deg, #3b82f6, #10b981);
-  border-radius: 12px;
+  border-radius: 10px;
   transition: width 0.3s ease;
 }
 
@@ -155,108 +149,98 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: white;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-/* Layout Grid */
-.main-grid {
+/* Companion Grid */
+.companion-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 20px;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 14px;
 }
 
-@media (max-width: 900px) {
-  .main-grid {
+@media (max-width: 720px) {
+  .companion-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Cards */
 .card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 14px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .card-header h2 {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 
-/* Script List */
 .script-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .script-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 12px 14px;
   background: rgba(13, 17, 23, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
-  transition: border-color 0.2s, background 0.2s;
-}
-
-.script-item:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-  background: rgba(22, 27, 34, 0.95);
 }
 
 .script-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .script-name {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: var(--text-main);
 }
 
 .script-meta {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
 .script-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-/* Role Selection Badges */
 .role-select-group {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
 .role-btn {
-  padding: 4px 10px;
-  font-size: 0.75rem;
-  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  border-radius: 5px;
   border: 1px solid var(--card-border);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .role-btn.active-play {
@@ -271,70 +255,52 @@ body {
   color: #34d399;
 }
 
-/* Blue Play Square Button */
 .blue-play-btn {
-  width: 44px;
-  height: 38px;
+  width: 38px;
+  height: 32px;
   background-color: var(--blue-button);
   border: none;
   border-radius: 6px;
   color: white;
-  font-size: 1rem;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
-.blue-play-btn:hover {
-  background-color: var(--blue-button-hover);
-  transform: scale(1.04);
-}
-
-.blue-play-btn:active {
-  transform: scale(0.96);
-}
-
-/* Right Column Layout */
-.right-column {
+.companion-side-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
 }
 
-.stream-wrapper {
+.w-full {
   width: 100%;
-  aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.stream-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.btn-large {
+  padding: 12px;
+  font-size: 0.95rem;
+  border-radius: 10px;
 }
 
 .logs-container {
-  height: 200px;
+  height: 160px;
   overflow-y: auto;
   background: rgba(10, 15, 26, 0.9);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 10px;
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   border: 1px solid var(--card-border);
 }
 
 .log-entry {
-  line-height: 1.4;
+  line-height: 1.3;
   word-break: break-word;
 }
 
@@ -347,16 +313,9 @@ body {
 .btn-primary {
   background: var(--primary-blue);
   color: white;
-  padding: 8px 18px;
-  border-radius: var(--radius-md);
   border: none;
-  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-}
-
-.btn-primary:hover {
-  background: var(--primary-hover);
 }
 
 .btn-primary.active {
@@ -369,12 +328,8 @@ body {
   border: none;
 }
 
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--danger-hover);
-}
-
 .btn-danger:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -382,13 +337,8 @@ body {
   background: transparent;
   border: 1px solid var(--card-border);
   color: var(--text-muted);
-  padding: 4px 10px;
-  font-size: 0.75rem;
-  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  border-radius: 5px;
   cursor: pointer;
-}
-
-.btn-outline:hover {
-  color: var(--text-main);
-  border-color: var(--text-muted);
 }
